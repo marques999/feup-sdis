@@ -9,7 +9,27 @@ public class UDPClient
 {
 	private static void printUsage()
 	{
-		System.out.println("ERROR: invalid arguments, usage: java UDPClient <hostname> <port_number> <command> <arguments>*");
+		System.out.println("usage: java UDPClient <hostname> <port_number> <command> <arguments>*");
+	}
+
+	private static void printConnection(final InetAddress paramAddress, int paramPort)
+	{
+		System.out.print(String.format("(%s) connected to %s:%d\n",
+			(new Date()).toString(), paramAddress.getHostAddress(), paramPort));
+	}
+
+	private static void printCommand(final String commandMessage)
+	{
+		System.out.print(String.format("(%s) sent command: %s\n",
+			(new Date()).toString(), commandMessage));
+	}
+
+	private static void printResponse(final String responseMessage)
+	{
+		String[] responseLines = responseMessage.split("\n");
+		String responseLine = responseLines[0].equals("-1") ? responseLines[0] : responseLines[1];
+		System.out.print(String.format("(%s) received response: %s\n",
+			(new Date()).toString(), responseLine));
 	}
 
 	private static boolean validateCommand(final String command, int argc)
@@ -17,17 +37,12 @@ public class UDPClient
 		return (command.equals("REGISTER") && argc == 5) || (command.equals("LOOKUP") && argc == 4);
 	}
 
-	private static void logMessage(final String message)
-	{
-		System.out.println("(" + (new Date()).toString() + ") " + message);
-	}
-
 	public static void main(String[] args) throws IOException
 	{
 		if (args.length < 4)
 		{
 			printUsage();
-			System.exit(0);
+			System.exit(1);
 		}
 
 		int hostPort = 0;
@@ -36,68 +51,54 @@ public class UDPClient
 		{
 			hostPort = Integer.parseInt(args[1]);
 		}
-		catch (NumberFormatException e)
+		catch (NumberFormatException ex)
 		{
-			printUsage();
-			System.exit(0);
+			ex.printStackTrace();
+			System.exit(1);
 		}
 
 		String fullCommand = args[2];
+		InetAddress hostAddress = null;
+		DatagramPacket packet = null;
 
 		if (!validateCommand(args[2], args.length))
 		{
 			printUsage();
-			System.exit(0);
+			System.exit(1);
 		}
 
 		for (int i = 3; i < args.length; i++)
 		{
-			fullCommand = fullCommand.concat(" " + args[i]);
+			fullCommand += " " + args[i];
 		}
-
-		DatagramSocket socket = new DatagramSocket();
-		InetAddress hostAddress = InetAddress.getLocalHost();
 
 		try
 		{
 			hostAddress = InetAddress.getByName(args[0]);
 		}
-		catch (UnknownHostException e)
+		catch (UnknownHostException ex)
 		{
-			System.out.println(e.getMessage());
-			socket.close();
+			ex.printStackTrace();
+			System.exit(1);
 		}
-
-		logMessage(String.format("Connected to %s:%s...", hostAddress.getHostAddress(), args[1]));
-		logMessage("REQUEST: " + fullCommand);
 
 		byte[] sbuf = fullCommand.getBytes();
 		byte[] rbuf = new byte[1024];
 
-		try
+		try (final DatagramSocket socket = new DatagramSocket())
 		{
-			DatagramPacket packet = new DatagramPacket(sbuf, sbuf.length, hostAddress, hostPort);
+			packet = new DatagramPacket(sbuf, sbuf.length, hostAddress, hostPort);
+			printConnection(hostAddress, hostPort);
 			socket.send(packet);
-		}
-		catch (IOException e)
-		{
-			System.out.println(e.getMessage());
-			socket.close();
-		}
-
-		try
-		{
-			DatagramPacket packet = new DatagramPacket(rbuf, rbuf.length);
+			printCommand(fullCommand);
+			packet = new DatagramPacket(rbuf, rbuf.length);
 			socket.receive(packet);
-			logMessage("RESPONSE: " + new String(packet.getData()).trim());
+			printResponse(new String(packet.getData(), packet.getOffset(), packet.getLength()));
 		}
-		catch (IOException e)
+		catch (IOException ex)
 		{
-			System.out.println(e.getMessage());
-		}
-		finally
-		{
-			socket.close();
+			ex.printStackTrace();
+			System.exit(1);
 		}
 	}
 }

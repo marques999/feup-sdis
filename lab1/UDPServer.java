@@ -7,66 +7,86 @@ import java.util.HashMap;
 
 public class UDPServer
 {
-	private static HashMap<String, String> m_database = new HashMap<>();
-
 	private static void printUsage()
 	{
-		System.out.println("ERROR: invalid arguments, usage: java UDPServer <port_number>");
+		System.out.println("usage: java UDPServer <port_number>");
 	}
 
-	private static void logMessage(final String message)
+	private static void printConnection(final InetAddress host, int port)
 	{
-		System.out.println("(" + (new Date()).toString() + ") " + message);
+		System.out.print(String.format("(%s) server running at %s:%d...\n",
+			(new Date()).toString(), host.getHostAddress(), port));
 	}
+
+	private static void printReply(final String replyMessage)
+	{
+		System.out.print(String.format("(%s) sent reply: %s\n",
+			(new Date()).toString(), replyMessage));
+	}
+
+	private static void printRequest(final String requestMessage, final InetAddress host, int port)
+	{
+		System.out.print(String.format("(%s) client connected from %s:%d\n",
+			(new Date()).toString(), host.getHostAddress(), port));
+		System.out.print(String.format("(%s) received command: %s\n",
+			(new Date()).toString(), requestMessage));
+	}
+
+	private static HashMap<String, String> lookupTable = new HashMap<>();
 
 	private static String registerPlate(final String paramPlate, final String paramOwner)
 	{
-		if (m_database.containsKey(paramPlate))
+		if (lookupTable.containsKey(paramPlate))
 		{
-			return null;
+			return "";
 		}
 
-		m_database.put(paramPlate, paramOwner);
+		lookupTable.put(paramPlate, paramOwner);
 
 		return paramOwner;
 	}
 
 	private static String lookupPlate(final String paramPlate)
 	{
-		if (!m_database.containsKey(paramPlate))
+		if (!lookupTable.containsKey(paramPlate))
 		{
-			return null;
+			return "";
 		}
 
-		return m_database.get(paramPlate);
+		return lookupTable.get(paramPlate);
 	}
 
-	private static String generateResponse(final String command)
+	private static byte[] generateResponse(final String command)
 	{
-		final String[] args = command.split(" ");
+		String[] args = command.split(" ");
+		String response = "";
+		String replace = "";
 
-		if (args[0].equals("LOOKUP") && args.length == 2)
+		int returnCode = -1;
+
+		if (args[0].equals("LOOKUP") && args.length >= 2)
 		{
-			final String output = Integer.toString(m_database.size()) + "\n" + args[1];
-			final String result = lookupPlate(args[1]);
-
-			if (result != null)
-			{
-				return output + " - " + result;
-			}
+			replace = String.format("%s ", args[0]);
+			response = lookupPlate(command.replaceFirst(replace, ""));
 		}
-		else if (args[0].equals("REGISTER") && args.length == 3)
+		else if (args[0].equals("REGISTER") && args.length >= 3)
 		{
-			final String output = Integer.toString(m_database.size()) + "\n" + args[1];
-			final String result = registerPlate(args[1], args[2]);
-
-			if (result != null)
-			{
-				return output + " - " + result;
-			}
+			replace = String.format("%s %s ", args[0], args[1]);
+			response = registerPlate(args[1], command.replaceFirst(replace, ""));
 		}
 
-		return "-1\n";
+		if (response.isEmpty())
+		{
+			printReply(Integer.toString(returnCode));
+		}
+		else
+		{
+			response = String.format("(%s, %s)", args[1], response);
+			returnCode = lookupTable.size();
+			printReply(response);
+		}
+
+		return (returnCode + "\n" + response).getBytes();
 	}
 
 	public static void main(String[] args) throws IOException
@@ -74,24 +94,24 @@ public class UDPServer
 		if (args.length != 1)
 		{
 			printUsage();
-			System.exit(0);
+			System.exit(1);
 		}
 
-		int hostPort = 0;
+		int serverPort = 0;
 
 		try
 		{
-			hostPort = Integer.parseInt(args[0]);
+			serverPort = Integer.parseInt(args[0]);
 		}
-		catch (NumberFormatException e)
+		catch (NumberFormatException ex)
 		{
-			printUsage();
-			System.exit(0);
+			ex.printStackTrace();
+			System.exit(1);
 		}
 
-		DatagramSocket socket = new DatagramSocket(hostPort);
-		InetAddress hostAddress = InetAddress.getLocalHost();
-		logMessage(String.format("Server running @ %s:%s...", hostAddress.getHostAddress(), args[0]));
+		DatagramSocket socket = new DatagramSocket(serverPort);
+		InetAddress serverAddress = InetAddress.getLocalHost();
+		printConnection(serverAddress, serverPort);
 
 		for (;;)
 		{
@@ -102,22 +122,17 @@ public class UDPServer
 				// get request
 				DatagramPacket packet = new DatagramPacket(rbuf, rbuf.length);
 				socket.receive(packet);
-
 				// display request
-				String received = new String(packet.getData()).trim();
-				logMessage("REQUEST: " + received);
-
+				String received = new String(packet.getData(), packet.getOffset(), packet.getLength());
+				printRequest(received, packet.getAddress(), packet.getPort());
 				// generate response
-				String response = generateResponse(received);
-				byte[] sbuf = response.getBytes();
-
+				byte[] sbuf = generateResponse(received);
 				// send response
-				packet = new DatagramPacket(sbuf, sbuf.length, packet.getAddress(), packet.getPort());
-				socket.send(packet);
+				socket.send(new DatagramPacket(sbuf, sbuf.length, packet.getAddress(), packet.getPort()));
 			}
-			catch (IOException e)
+			catch (IOException ex)
 			{
-				System.out.println(e.getMessage());
+				ex.printStackTrace();
 				socket.close();
 			}
 		}
