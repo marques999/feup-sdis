@@ -1,37 +1,42 @@
 package sdis_proj1;
 
-public abstract class SimpleMessage
+public abstract class SimpleMessage extends Message
 {
-	protected static final int TYPE = 0;
-	protected static final int VERSION = 1;
-	protected static final int SENDER_ID = 2;
-	protected static final int FILE_ID = 3;
-	protected static final int CHUNK_NO = 4;
+	/*
+	 * This field together with the FileId specifies a chunk in the file.
+	 * The chunk numbers are integers and should be assigned sequentially
+	 * starting at 0. It is encoded as a sequence of ASCII characters
+	 * corresponding to the decimal representation of that number, with the
+	 * most significant digit first. The length of this field is variable,
+	 * but should not be larger than 6 chars. Therefore, each file can have
+	 * at most one million chunks. Given that each chunk is 64 KByte, this
+	 * limits the size of the files to backup to 64 GByte.
+	 */
+	private int m_chunkId;
 
-	private static final String HEADER_EOF = "\r\n";
-	protected String[] m_header;
+	protected SimpleMessage(FileChunk paramChunk)
+	{
+		super(5, paramChunk.getFileId());
+		m_chunkId = paramChunk.getChunkId();
+	}
 
-	protected SimpleMessage(FileChunk paramChunk, int messageLength)
+	protected SimpleMessage(String[] paramHeader) throws VersionMismatchException
 	{
-		m_header = new String[messageLength];
-		m_header[TYPE] = getType();
-		m_header[SENDER_ID] = Integer.toString(Server.getInstance().getServerId());
-		m_header[VERSION] = Server.getInstance().getVersion();
-		m_header[FILE_ID] = paramChunk.getFileId();
-		m_header[CHUNK_NO] = Integer.toString(paramChunk.getChunkId());
+		super(paramHeader);
+		m_chunkId = Integer.parseInt(paramHeader[MessageHeader.ChunkId]);
 	}
-	
-	protected void attach(String fileId, int chunkId)
+
+	protected void dump()
 	{
-		m_header[FILE_ID] = fileId;
-		m_header[CHUNK_NO] = Integer.toString(chunkId);
+		super.dump();
+		System.out.println("ChunkNo:\t" + m_chunkId);
 	}
-	
-	protected abstract String getType();
-	
-	public byte[] getMessage()
+
+	public final byte[] getMessage()
 	{
-		return (String.join(" ", m_header) + HEADER_EOF).getBytes();
+		final String[] m_header = generateHeader();
+		m_header[MessageHeader.ChunkId] = Integer.toString(m_chunkId);
+		return (String.join(" ", m_header) + "\r\n\r\n").getBytes();
 	}
 }
 
@@ -39,10 +44,15 @@ class STOREDMessage extends SimpleMessage
 {
 	public STOREDMessage(final FileChunk paramChunk)
 	{
-		super(paramChunk, 5);
+		super(paramChunk);
 	}
 
-	protected String getType()
+	protected STOREDMessage(String[] paramHeader) throws VersionMismatchException
+	{
+		super(paramHeader);
+	}
+
+	public final String getType()
 	{
 		return "STORED";
 	}
@@ -52,25 +62,17 @@ class GETCHUNKMessage extends SimpleMessage
 {
 	public GETCHUNKMessage(final FileChunk paramChunk)
 	{
-		super(paramChunk, 5);
+		super(paramChunk);
 	}
 
-	protected String getType()
+	protected GETCHUNKMessage(String[] paramHeader) throws VersionMismatchException
+	{
+		super(paramHeader);
+	}
+
+	public final String getType()
 	{
 		return "GETCHUNK";
-	}
-}
-
-class DELETEMessage extends SimpleMessage
-{
-	public DELETEMessage(final FileChunk paramChunk)
-	{
-		super(paramChunk, 4);
-	}
-
-	protected String getType()
-	{
-		return "DELETE";
 	}
 }
 
@@ -78,10 +80,15 @@ class REMOVEDMessage extends SimpleMessage
 {
 	public REMOVEDMessage(final FileChunk paramChunk)
 	{
-		super(paramChunk, 5);
+		super(paramChunk);
 	}
 
-	protected String getType()
+	protected REMOVEDMessage(String[] paramHeader) throws VersionMismatchException
+	{
+		super(paramHeader);
+	}
+
+	public final String getType()
 	{
 		return "REMOVED";
 	}

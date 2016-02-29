@@ -2,12 +2,11 @@ package sdis_proj1;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.util.Arrays;
 
 public class FileChunk
 {
 	private static final int MAXIMUM_CHUNK_SIZE = 64000;
-
-	private String m_fileId;
 
 	private int m_chunkId;
 	private int m_size;
@@ -17,19 +16,31 @@ public class FileChunk
 	{
 		m_data = new byte[MAXIMUM_CHUNK_SIZE];
 
-		int bytesRead = paramStream.read(m_data, 0, MAXIMUM_CHUNK_SIZE);
-
-		if (bytesRead < 0)
-		{
-			throw new IOException();
-		}
-
-		m_fileId = paramFile;
-		m_chunkId = paramChunk;
-		m_size = bytesRead;
+		final int bytesRead = paramStream.read(m_data);
+		final int chunkSize = bytesRead < 0 ? 0 : bytesRead;
+		
+		m_data = Arrays.copyOf(m_data, chunkSize);		
+		setParameters(paramFile, paramChunk, chunkSize);
+	}
+	
+	public FileChunk(String[] paramHeader, byte[] paramBuffer)
+	{
+		m_data = paramBuffer;
+		setParameters(paramHeader[MessageHeader.FileId],
+			Integer.parseInt(paramHeader[MessageHeader.ChunkId]), 
+			m_data.length);
+	}
+	
+	private String m_fileId;
+	
+	private void setParameters(final String fileId, int chunkId, int chunkSize)
+	{
+		m_fileId = fileId;
+		m_chunkId = chunkId;
+		m_size = m_data.length;
 	}
 
-	public final byte[] getContents()
+	public final byte[] getData()
 	{
 		return m_data;
 	}
