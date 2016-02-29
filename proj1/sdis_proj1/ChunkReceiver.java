@@ -20,7 +20,7 @@ public class ChunkReceiver {
 		int received = this.chunks.size();
 		
 		// verify if all chunks were received
-		FileChunk lastChunk = chunks.get(received - 1);
+		FileChunk lastChunk = this.chunks.get(received - 1);
 		if(lastChunk == null)
 			return null;
 		else if (!lastChunk.isLast())
