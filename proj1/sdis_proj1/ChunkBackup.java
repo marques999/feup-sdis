@@ -8,15 +8,19 @@ import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-public class FileObject
+public class ChunkBackup
 {
-	private File m_file = null;
-	private BufferedInputStream m_reader = null;
+	private File m_file;
+	private FileChunk[] m_chunks;
+	private String m_fileId;
+	private BufferedInputStream m_reader;
 
-	public FileObject(final String paramFile)
+	public ChunkBackup(final String paramFile) throws NoSuchAlgorithmException
 	{
+		m_chunks = null;
+		m_reader = null;
 		m_file = new File(paramFile);
-		
+
 		try
 		{
 			m_reader = new BufferedInputStream(new FileInputStream(m_file));
@@ -25,37 +29,44 @@ public class FileObject
 		{
 			ex.printStackTrace();
 		}
-	}
-
-	private String getHash() throws NoSuchAlgorithmException
-	{
+		
 		final MessageDigest md = MessageDigest.getInstance("SHA-256");
+		final StringBuffer sb = new StringBuffer();
 		final String digestedFile = String.format("%s/%d/%d", m_file.getName(), m_file.lastModified(), m_file.length());
-		final StringBuffer sb = new StringBuffer();	
-		
-		md.update(digestedFile.getBytes());
-		
-		byte byteData[] = md.digest();
 
-		for (int i = 0; i < byteData.length; i++)
+		md.update(digestedFile.getBytes());
+
+		final byte byteData[] = md.digest();
+
+		for (final byte element : byteData)
 		{
-			sb.append(Integer.toString((byteData[i] & 0xff) + 0x100, 16).substring(1));
+			sb.append(Integer.toString((element & 0xff) + 0x100, 16).substring(1));
 		}
 
-		return sb.toString();
+		m_fileId = sb.toString();
 	}
 
-	public FileChunk[] split() throws IOException, NoSuchAlgorithmException
+	public String getHash()
+	{
+		return m_fileId;
+	}
+
+	public final FileChunk[] getChunks()
+	{
+		return m_chunks;
+	}
+
+	public int split() throws IOException, NoSuchAlgorithmException
 	{
 		final int numberChunks = (int) Math.round(m_file.length() / 64000.0) + 1;
-		final String generatedId = getHash();
-		final FileChunk[] result = new FileChunk[numberChunks];
-		
+
+		m_chunks = new FileChunk[numberChunks];
+
 		for (int i = 0; i < numberChunks; i++)
 		{
-			result[i] = new FileChunk(m_reader, generatedId, i);
+			m_chunks[i] = new FileChunk(m_reader, m_fileId, i);
 		}
 
-		return result;
+		return numberChunks;
 	}
 }

@@ -37,11 +37,11 @@ public abstract class ChunkMessage extends Message
 		super(paramHeader);
 		
 		m_body = paramBuffer;		
-		m_chunkId = Integer.parseInt(paramHeader[MessageHeader.ChunkId]);
+		m_chunkId = Integer.parseInt(paramHeader[MessageFields.ChunkId]);
 
-		if (getLength() > MessageHeader.ReplicationDegree)
+		if (getLength() > MessageFields.ReplicationDegree)
 		{
-			m_degree = Integer.parseInt(paramHeader[MessageHeader.ReplicationDegree]);
+			m_degree = Integer.parseInt(paramHeader[MessageFields.ReplicationDegree]);
 		}
 		else
 		{
@@ -62,14 +62,14 @@ public abstract class ChunkMessage extends Message
 	{
 		super.dump();
 		
-		System.out.println("ChunkNo:\t" + m_chunkId);
-		
+		System.out.println("\tChunkNo: " + m_chunkId);
+		System.out.println("\tLength: " + m_body.length + " bytes");
 		if (m_degree > 0)
 		{
-			System.out.println("Degree:\t" + m_degree);
+			System.out.println("\tDegree: " + m_degree);
 		}
 		
-		System.out.println("DUMPING FIRST 2048 BYTES FROM PAYLOAD...");
+		/*System.out.println("DUMPING FIRST 2048 BYTES FROM PAYLOAD...");
 		
 		int arraySize = m_body.length < 2048 ? m_body.length : 2048;
 		
@@ -85,21 +85,26 @@ public abstract class ChunkMessage extends Message
 			{
 				System.out.println();
 			}
-		}
+		}*/
 	}
 	
 	public final byte[] getHeader()
 	{
 		final String[] m_header = generateHeader();
 	
-		m_header[MessageHeader.ChunkId] = Integer.toString(m_chunkId);
+		m_header[MessageFields.ChunkId] = Integer.toString(m_chunkId);
 		
 		if (m_degree > 0)
 		{
-			m_header[MessageHeader.ReplicationDegree] = Integer.toString(m_degree);
+			m_header[MessageFields.ReplicationDegree] = Integer.toString(m_degree);
 		}
 		
 		return (String.join(" ", m_header) + "\r\n\r\n").getBytes();
+	}
+	
+	public final FileChunk generateChunk()
+	{
+		return new FileChunk(getFileId(), m_chunkId, m_body);
 	}
 
 	public final byte[] getBody()

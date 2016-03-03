@@ -12,28 +12,34 @@ public class FileChunk
 	private int m_size;
 	private byte[] m_data;
 
-	public FileChunk(BufferedInputStream paramStream, String paramFile,	int paramChunk) throws IOException
+	public FileChunk(final BufferedInputStream paramStream, final String paramFile,	int paramChunk) throws IOException
 	{
 		m_data = new byte[MAXIMUM_CHUNK_SIZE];
 
 		final int bytesRead = paramStream.read(m_data);
 		final int chunkSize = bytesRead < 0 ? 0 : bytesRead;
-		
-		m_data = Arrays.copyOf(m_data, chunkSize);		
+
+		m_data = Arrays.copyOf(m_data, chunkSize);
 		setParameters(paramFile, paramChunk, chunkSize);
 	}
-	
-	public FileChunk(String[] paramHeader, byte[] paramBuffer)
+
+	public FileChunk(final String[] paramHeader, final byte[] paramBuffer)
 	{
 		m_data = paramBuffer;
-		setParameters(paramHeader[MessageHeader.FileId],
-			Integer.parseInt(paramHeader[MessageHeader.ChunkId]), 
+		setParameters(paramHeader[MessageFields.FileId],
+			Integer.parseInt(paramHeader[MessageFields.ChunkId]),
 			m_data.length);
 	}
-	
+
+	public FileChunk(final String fileId, final int chunkId, final byte[] paramBuffer)
+	{
+		m_data = paramBuffer;
+		setParameters(fileId, chunkId, m_data.length);
+	}
+
 	private String m_fileId;
-	
-	private void setParameters(final String fileId, int chunkId, int chunkSize)
+
+	private void setParameters(final String fileId, final int chunkId, final int chunkSize)
 	{
 		m_fileId = fileId;
 		m_chunkId = chunkId;
@@ -44,7 +50,7 @@ public class FileChunk
 	{
 		return m_data;
 	}
-	
+
 	public final int getLength()
 	{
 		return m_size;
