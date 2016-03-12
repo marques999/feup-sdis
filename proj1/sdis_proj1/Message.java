@@ -2,6 +2,13 @@ package sdis_proj1;
 
 public abstract class Message
 {
+	public static final int Type = 0;
+	public static final int Version = 1;
+	public static final int SenderId = 2;
+	public static final int FileId = 3;
+	public static final int ChunkId = 4;
+	public static final int ReplicationDegree = 5;
+	
 	/*
 	 * This attribute represents the ID of the server that has sent the message.
 	 * Its value is encoded as a variable length sequence of ASCII digits.
@@ -38,48 +45,43 @@ public abstract class Message
 	 * This constructor can be used parse data from the received messages
 	 * @throws VersionMismatchException
 	 */
-	protected Message(final String[] paramHeader) throws VersionMismatchException
-	{
+	protected Message(final String[] paramHeader) throws VersionMismatchException {
+		
 		m_length = paramHeader.length;
-		m_senderId = Integer.parseInt(paramHeader[MessageFields.SenderId]);
-		m_fileId = paramHeader[MessageFields.FileId];
-		m_version = paramHeader[MessageFields.Version];
+		m_senderId = Integer.parseInt(paramHeader[Message.SenderId]);
+		m_fileId = paramHeader[Message.FileId];
+		m_version = paramHeader[Message.Version];
 
-		if (!m_version.equals(DBS.getInstance().getVersion()))
-		{
-			throw new VersionMismatchException(m_version, DBS.getInstance().getVersion());
+		if (!m_version.equals(Protocol.getInstance().getVersion())) {
+			throw new VersionMismatchException(m_version, Protocol.getInstance().getVersion());
 		}
 	}
 
 	/*
 	 * This constructor can be used to generate a message to be sent
 	 */
-	protected Message(int messageLength, final String fileId)
-	{
+	protected Message(int messageLength, final String fileId) {
 		m_length = messageLength;
-		m_senderId = DBS.getInstance().getServerId();
-		m_version = DBS.getInstance().getVersion();
+		m_senderId = Protocol.getInstance().getPeerId();
+		m_version = Protocol.getInstance().getVersion();
 		m_fileId = fileId;
 	}
 
-	public final String getFileId()
-	{
+	public final String getFileId() {
 		return m_fileId;
 	}
 
 	/*
 	 * This method returns the protocol version
 	 */
-	public final String getVersion()
-	{
+	public final String getVersion() {
 		return m_version;
 	}
 
 	/*
 	 * This method returns the number of message fields
 	 */
-	public final int getLength()
-	{
+	public final int getLength() {
 		return m_length;
 	}
 
@@ -94,52 +96,46 @@ public abstract class Message
 	/*
 	 * This method returns the ID of the server that has sent the message
 	 */
-	public final int getSender()
-	{
+	public final int getSender() {
 		return m_senderId;
 	}
 	
-	public String[] generateHeader()
-	{
+	public String[] generateHeader() {
+
 		final String[] m_header = new String[m_length];
 
-		m_header[MessageFields.Type] = getType();
-		m_header[MessageFields.SenderId] = Integer.toString(m_senderId);
-		m_header[MessageFields.Version] = m_version;
-		m_header[MessageFields.FileId] = m_fileId;
+		m_header[Message.Type] = getType();
+		m_header[Message.SenderId] = Integer.toString(m_senderId);
+		m_header[Message.Version] = m_version;
+		m_header[Message.FileId] = m_fileId;
 
 		return m_header;
 	}
 
-	protected void dump()
-	{
+	protected void dump() {
 		System.out.println("\tType: " + getType());
 		System.out.println("\tVersion: " + m_version);
 		System.out.println("\tSenderId: " + m_senderId);
 		System.out.println("\tFileId: " + m_fileId);
 	}
 
-	public byte[] getMessage()
-	{
+	public byte[] getMessage() {
 		return (String.join(" ", generateHeader()) + "\r\n\r\n").getBytes();
 	}
 }
 
-class DELETEMessage extends Message
-{
-	public DELETEMessage(final String fileId)
-	{
+class DELETEMessage extends Message {
+	
+	public DELETEMessage(final String fileId) {
 		super(4, fileId);
 	}
 
-	protected DELETEMessage(final String[] paramHeader) throws VersionMismatchException
-	{
+	protected DELETEMessage(final String[] paramHeader) throws VersionMismatchException {
 		super(paramHeader);
 	}
 
 	@Override
-	public final String getType()
-	{
+	public final String getType() {
 		return "DELETE";
 	}
 }

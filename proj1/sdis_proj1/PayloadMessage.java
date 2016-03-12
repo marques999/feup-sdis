@@ -2,7 +2,7 @@ package sdis_proj1;
 
 import java.util.Arrays;
 
-public abstract class ChunkMessage extends Message
+public abstract class PayloadMessage extends Message
 {
 	/*
 	 * When present, the body contains the data of a file chunk.
@@ -32,24 +32,30 @@ public abstract class ChunkMessage extends Message
 	 */
 	private int m_degree;
 
-	protected ChunkMessage(final String[] paramHeader, final byte[] paramBuffer) throws VersionMismatchException
-	{
+	protected PayloadMessage(final String[] paramHeader, final byte[] paramBuffer) throws VersionMismatchException {
+		
 		super(paramHeader);
 		
 		m_body = paramBuffer;		
-		m_chunkId = Integer.parseInt(paramHeader[MessageFields.ChunkId]);
+		m_chunkId = Integer.parseInt(paramHeader[Message.ChunkId]);
 
-		if (getLength() > MessageFields.ReplicationDegree)
-		{
-			m_degree = Integer.parseInt(paramHeader[MessageFields.ReplicationDegree]);
+		if (getLength() > Message.ReplicationDegree) {
+			m_degree = Integer.parseInt(paramHeader[Message.ReplicationDegree]);
 		}
-		else
-		{
+		else {
 			m_degree = -1;
 		}
 	}
 	
-	protected ChunkMessage(final FileChunk paramChunk, int replicationDegree)
+	protected int getChunkId() {
+		return m_chunkId;
+	}
+	
+	protected int getDegree() {
+		return m_degree;
+	}
+	
+	protected PayloadMessage(final FileChunk paramChunk, int replicationDegree)
 	{
 		super(replicationDegree > 0 ? 6 : 5, paramChunk.getFileId());
 	
@@ -58,14 +64,14 @@ public abstract class ChunkMessage extends Message
 		m_degree = replicationDegree;
 	}
 
-	protected void dump()
-	{
+	protected void dump() {
+		
 		super.dump();
 		
 		System.out.println("\tChunkNo: " + m_chunkId);
 		System.out.println("\tLength: " + m_body.length + " bytes");
-		if (m_degree > 0)
-		{
+		
+		if (m_degree > 0) {
 			System.out.println("\tDegree: " + m_degree);
 		}
 		
@@ -88,71 +94,73 @@ public abstract class ChunkMessage extends Message
 		}*/
 	}
 	
-	public final byte[] getHeader()
-	{
+	public final byte[] getHeader() {
+		
 		final String[] m_header = generateHeader();
 	
-		m_header[MessageFields.ChunkId] = Integer.toString(m_chunkId);
+		m_header[Message.ChunkId] = Integer.toString(m_chunkId);
 		
-		if (m_degree > 0)
-		{
-			m_header[MessageFields.ReplicationDegree] = Integer.toString(m_degree);
+		if (m_degree > 0) {
+			m_header[Message.ReplicationDegree] = Integer.toString(m_degree);
 		}
 		
 		return (String.join(" ", m_header) + "\r\n\r\n").getBytes();
 	}
 	
-	public final FileChunk generateChunk()
-	{
+	public final FileChunk generateChunk() {
 		return new FileChunk(getFileId(), m_chunkId, m_body);
 	}
 
-	public final byte[] getBody()
-	{
+	public final byte[] getBody() {
 		return m_body;
 	}
 
-	public final byte[] getMessage()
-	{
+	public final byte[] getMessage() {
+		
 		final byte[] messageHeader = getHeader();
 		final byte[] result = Arrays.copyOf(messageHeader, messageHeader.length + m_body.length);
+
 		System.arraycopy(m_body, 0, result, messageHeader.length, m_body.length);
+
 		return result;
 	}
 }
 
-class CHUNKSMessage extends ChunkMessage
-{
-	public CHUNKSMessage(final FileChunk paramChunk)
-	{
+class CHUNKMessage extends PayloadMessage {
+
+	public CHUNKMessage(final FileChunk paramChunk) {
 		super(paramChunk, 0);
 	}
 	
-	protected CHUNKSMessage(final String[] paramHeader, final byte[] paramBuffer) throws VersionMismatchException
-	{
+	protected CHUNKMessage(final String[] paramHeader, final byte[] paramBuffer) throws VersionMismatchException {
 		super(paramHeader, paramBuffer);
 	}
 
-	public final String getType()
-	{
+	public final String getType() {
 		return "CHUNK";
 	}
 }
 
-class PUTCHUNKMessage extends ChunkMessage
-{
-	public PUTCHUNKMessage(final FileChunk paramChunk, int replicationDegree)
-	{
+class PUTCHUNKMessage extends PayloadMessage {
+
+	public PUTCHUNKMessage(final FileChunk paramChunk, int replicationDegree) {
 		super(paramChunk, replicationDegree);
 	}
 
-	protected PUTCHUNKMessage(final String[] paramHeader, final byte[] paramBuffer) throws VersionMismatchException
-	{
+	protected PUTCHUNKMessage(final String[] paramHeader, final byte[] paramBuffer) throws VersionMismatchException {
 		super(paramHeader, paramBuffer);
 	}
+	
+	public Message getResponse() {
+		
+		if (Protocol.DEBUG) {
+			System.out.println("[DEBUG] generateSTORED()::generating STORED response");
+		}
+		
+		return new STOREDMessage(getFileId(), getChunkId());
+	}
 
-	public final String getType()
-	{
+	public final String getType() {
 		return "PUTCHUNK";
 	}
 }
