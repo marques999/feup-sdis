@@ -84,16 +84,20 @@ public class CLI {
 	private static void parseCommand(String arg){
 		if(arg.equals("RESTORE") || arg.equals("RESTOREENH")){
 			currentState = READ_CMD;
-			System.out.println("[STATE]: ENTER RESTORE_CMD");
+			if(DEBUG)
+				System.out.println("[STATE]: ENTER RESTORE_CMD");
 		} else if(arg.equals("DELETE") || arg.equals("DELETEENH")){
 			currentState = READ_CMD;
-			System.out.println("[STATE]: ENTER DELETE_CMD");
+			if(DEBUG)
+				System.out.println("[STATE]: ENTER DELETE_CMD");
 		} else if(arg.equals("RECLAIM") || arg.equals("RECLAIMENH")){
 			currentState = READ_CMD;
-			System.out.println("[STATE]: ENTER RECLAIM_CMD");
+			if(DEBUG)
+				System.out.println("[STATE]: ENTER RECLAIM_CMD");
 		} else if(arg.equals("BACKUP") || arg.equals("BACKUPENH")){
 			currentState = BACKUP_CMD;
-			System.out.println("[STATE]: ENTER BACKUP_CMD");
+			if(DEBUG)
+				System.out.println("[STATE]: ENTER BACKUP_CMD");
 		} else {
 			System.out.println("[ERROR]: Invalid command!");
 			System.exit(1);
