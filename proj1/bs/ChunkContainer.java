@@ -1,4 +1,4 @@
-package sdis_proj1;
+package bs;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -18,51 +18,60 @@ public class ChunkContainer
 	private HashMap<Integer, FileChunk> m_chunks;
 	private BufferedInputStream m_reader;
 
-	public ChunkContainer(final File paramFile, boolean readOnly) throws NoSuchAlgorithmException, IOException
+	public ChunkContainer(final String myFile)
+	{
+		m_reader = null;
+		m_chunks = new HashMap<Integer, FileChunk>();
+		m_file = new File(myFile);
+		m_fileId = myFile;
+		m_realId = myFile;
+	}
+	
+	public void dump()
+	{
+		m_chunks.forEach((k,v) -> {
+			System.out.println(k + ": " + v.getLength() + " bytes");
+		});
+	}
+	
+	public ChunkContainer(final File myFile, int myReplicationDegree) throws NoSuchAlgorithmException, IOException
 	{
 		m_reader = null;
 		m_chunks = new HashMap<>();
-		m_file = paramFile;
-		m_readonly = readOnly;
-		
-		if (m_readonly)
+		m_file = myFile;
+
+		try
 		{
-			try
-			{
-				m_reader = new BufferedInputStream(new FileInputStream(m_file));
-			}
-			catch (FileNotFoundException ex)
-			{
-				ex.printStackTrace();
-			}
-			
-			final MessageDigest md = MessageDigest.getInstance("SHA-256");
-			final StringBuffer sb = new StringBuffer();
-			final String digestedFile = String.format("%s/%d/%d", m_file.getName(), m_file.lastModified(), m_file.length());
-
-			md.update(digestedFile.getBytes());
-
-			final byte byteData[] = md.digest();
-
-			for (final byte element : byteData)
-			{
-				sb.append(Integer.toString((element & 0xff) + 0x100, 16).substring(1));
-			}
-
-			m_fileId = sb.toString();
-			m_realId = paramFile.getName();
-			m_size = paramFile.length();
-			
-			int numberChunks = (int) Math.round(m_file.length() / 64000.0) + 1;
-
-			for (int i = 0; i < numberChunks; i++)
-			{
-				m_chunks.put(i, new FileChunk(m_reader, m_fileId, i));
-			}
+			m_reader = new BufferedInputStream(new FileInputStream(m_file));
 		}
-		else
+		catch (FileNotFoundException ex)
 		{
-			m_realId = m_fileId;
+			ex.printStackTrace();
+		}
+
+		final MessageDigest md = MessageDigest.getInstance("SHA-256");
+		final StringBuffer sb = new StringBuffer();
+		final String digestedFile = String.format("%s/%d/%d", m_file.getName(),
+			m_file.lastModified(), m_file.length());
+
+		md.update(digestedFile.getBytes());
+
+		final byte byteData[] = md.digest();
+
+		for (final byte element : byteData)
+		{
+			sb.append(Integer.toString((element & 0xff) + 0x100, 16).substring(1));
+		}
+
+		m_fileId = sb.toString();
+		m_realId = myFile.getName();
+		m_size = myFile.length();
+
+		int numberChunks = (int) Math.round(m_file.length() / 64000.0) + 1;
+
+		for (int i = 0; i < numberChunks; i++)
+		{
+			m_chunks.put(i, new FileChunk(m_reader, m_fileId, i, myReplicationDegree));
 		}
 	}
 	
@@ -85,13 +94,40 @@ public class ChunkContainer
 	public final void removeChunk(int chunkId) {
 
 		// ------------------------------------------
-		// 2) check if we can modify container and if chunk exists
+		// 1) check if we can modify container and if chunk exists
 		// ------------------------------------------
 
 		if (m_chunks.containsKey(chunkId))
 		{
 			m_size -= m_chunks.remove(chunkId).getLength();
 		}
+	}
+	
+	public final void removeAll()
+	{
+		m_chunks.clear();
+		m_size = 0;
+	}
+	
+	public final void decreaseCount(int chunkId)
+	{
+		if (m_chunks.containsKey(chunkId))
+		{
+			m_chunks.get(chunkId).decreaseCount();
+		}
+	}
+	
+	public final void increaseCount(int chunkId)
+	{
+		if (m_chunks.containsKey(chunkId))
+		{
+			m_chunks.get(chunkId).increaseCount();
+		}
+	}
+	
+	public final boolean chunkExists(int chunkId)
+	{
+		return m_chunks.containsKey(chunkId);
 	}
 	
 	/*
@@ -101,15 +137,7 @@ public class ChunkContainer
 	public final void putChunk(final FileChunk chunk) throws BadChunkException{
 		
 		// -----------------------------------
-		// 1) check if we're accepting chunks
-		// -----------------------------------
-		
-		if (m_readonly) {
-			return;
-		}
-
-		// -----------------------------------
-		// 2) check if received a valid chunk
+		// 1) check if received a valid chunk
 		// -----------------------------------
 
 		if (chunk.getChunkId() < 0 || !chunk.getFileId().equals(m_fileId)) {
@@ -117,7 +145,7 @@ public class ChunkContainer
 		}
 
 		// ------------------------------------------
-		// 3) verify if there are no duplicate chunks
+		// 2) verify if there are no duplicate chunks
 		// ------------------------------------------
 
 		if (!m_chunks.containsKey(chunk.getChunkId())) {

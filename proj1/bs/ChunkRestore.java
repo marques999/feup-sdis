@@ -1,14 +1,13 @@
-package sdis_proj1;
+package bs;
 
 import java.util.HashMap;
 
-public class ChunkRestore
-{
+public class ChunkRestore {
+	
 	private final String m_fileId;
 	private final HashMap<Integer, FileChunk> m_chunksmap;
 
-	public ChunkRestore(final String paramFile)
-	{
+	public ChunkRestore(final String paramFile) {
 		m_fileId = paramFile;
 		m_chunksmap = new HashMap<Integer, FileChunk>();
 	}
@@ -16,10 +15,9 @@ public class ChunkRestore
 	/*
 	 * This method returns a chunk from the hash map given the key
 	 */
-	public final FileChunk get(int chunkId)
-	{
-		if (m_chunksmap.containsKey(chunkId))
-		{
+	public final FileChunk get(int chunkId) {
+		
+		if (m_chunksmap.containsKey(chunkId)) {
 			return m_chunksmap.get(chunkId);
 		}
 
@@ -30,14 +28,12 @@ public class ChunkRestore
 	 * This method adds a file chunk to the hash map
 	 * @throws BadChunkException
 	 */
-	public final void put(final FileChunk chunk) throws BadChunkException
-	{
+	public final void put(final FileChunk chunk) throws BadChunkException {
 		// -----------------------------------
 		// 1) check if received a valid chunk
 		// -----------------------------------
 
-		if (chunk.getChunkId() < 0 || !chunk.getFileId().equals(m_fileId))
-		{
+		if (chunk.getChunkId() < 0 || !chunk.getFileId().equals(m_fileId)) {
 			throw new BadChunkException(chunk);
 		}
 
@@ -45,8 +41,7 @@ public class ChunkRestore
 		// 2) verify if there are no duplicate chunks
 		// ------------------------------------------
 
-		if (!m_chunksmap.containsKey(chunk.getChunkId()))
-		{
+		if (!m_chunksmap.containsKey(chunk.getChunkId())) {
 			m_chunksmap.put(chunk.getChunkId(), chunk);
 		}
 	}
@@ -55,8 +50,8 @@ public class ChunkRestore
 	 * This method returns the received file chunks as an array of bytes
 	 * @throws MissingChunksException, BadChunkException
 	 */
-	public byte[] join() throws MissingChunksException, BadChunkException
-	{
+	public byte[] join() throws MissingChunksException, BadChunkException {
+	
 		// -----------------------------------
 		// 1) obtain number of received chunks
 		// -----------------------------------
@@ -70,8 +65,7 @@ public class ChunkRestore
 
 		final FileChunk lastChunk = m_chunksmap.get(numberChunks - 1);
 
-		if (lastChunk == null || !lastChunk.isLast())
-		{
+		if (lastChunk == null || !lastChunk.isLast()) {
 			throw new MissingChunksException(m_fileId);
 		}
 
@@ -81,17 +75,15 @@ public class ChunkRestore
 
 		final FileChunk[] fileChunks = new FileChunk[numberChunks];
 
-		for (int id = 0; id < numberChunks; id++)
-		{
-			if (!m_chunksmap.containsKey(id))
-			{
+		for (int id = 0; id < numberChunks; id++) {
+			
+			if (!m_chunksmap.containsKey(id)) {
 				throw new MissingChunksException(m_fileId);
 			}
 
 			FileChunk currentChunk = m_chunksmap.get(id);
 
-			if (currentChunk.isLast() && id != numberChunks - 1)
-			{
+			if (currentChunk.isLast() && id != numberChunks - 1) {
 				throw new BadChunkException(currentChunk);
 			}
 
@@ -106,12 +98,11 @@ public class ChunkRestore
 		byte[] data = new byte[fileSize];
 		int bytesWritten = 0;
 
-		for (int id = 0; id < numberChunks; id++)
-		{
+		for (int id = 0; id < numberChunks; id++) {
+			
 			int bytesToWrite = fileChunks[id].getLength();
 
-			if (bytesToWrite > 0)
-			{
+			if (bytesToWrite > 0) {
 				System.arraycopy(fileChunks[id].getData(), 0, data, bytesWritten, bytesToWrite);
 				bytesWritten += bytesToWrite;
 			}
@@ -121,8 +112,7 @@ public class ChunkRestore
 		// 5) check file size after joining chunks
 		// ------------------------------------------
 
-		if (bytesWritten != fileSize)
-		{
+		if (bytesWritten != fileSize) {
 			throw new MissingChunksException(m_fileId);
 		}
 
