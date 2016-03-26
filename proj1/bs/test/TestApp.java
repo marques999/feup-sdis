@@ -7,10 +7,31 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.util.Date;
+
+import bs.logging.Logger;
 
 public class TestApp
 {
+	private static String[] validCommands = {
+		"BACKUP", "BACKUPENH", 
+		"RESTORE", "RESTORENH",
+		"DELETE", "DELETEENH", 
+		"RECLAIM", "RECLAIMENH"
+	};
+	
+	public static boolean checkCommand(final String paramType)
+	{
+		for (int i = 0; i < validCommands.length; i++)
+		{
+			if (validCommands[i].equals(paramType))
+			{
+				return true;
+			}
+		}
+		
+		return false;
+	}
+
 	public static void main(String[] args)
 	{
 		if (args.length < 3 || args.length > 4)
@@ -35,8 +56,7 @@ public class TestApp
 			}
 			catch (UnknownHostException e)
 			{
-				System.err.println("[error@main:38] could not connect to localhost!");
-				System.exit(1);
+				Logger.abort("could not connect to localhost!");
 			}
 		}
 		else
@@ -49,22 +69,23 @@ public class TestApp
 			}
 			catch (UnknownHostException ex)
 			{
-				System.err.println("[error@main:52] user has given an invalid IP address!");
-				System.exit(1);
+				Logger.abort("you have entered an invalid IP address!");
 			}
 		}
 
 		final String rmiObject = rmiServer.substring(separatorPosition + 1);
 		final String paramType = args[1];
-
-		System.out.println("[information@main:60] ADDRESS: [" + rmiAddress.getHostAddress()+ "] OBJECT: [" + rmiObject + "]");
+		
+		if (!checkCommand(paramType))
+		{
+			Logger.abort("user has entered an invalid request!");
+		}
 
 		if (paramType.equals("BACKUP") || paramType.equals("BACKUPENH"))
 		{
 			if (args.length != 4)
 			{
-				System.err.println("[error@main:66] invalid number of arguments, no replication degree given!");
-				System.exit(1);
+				Logger.abort("could not parse replication degree!");
 			}
 
 			try
@@ -73,14 +94,12 @@ public class TestApp
 			}
 			catch (NumberFormatException ex)
 			{
-				System.err.println(ex.getMessage());
-				System.exit(1);
+				Logger.abort(ex.getMessage());
 			}
 
 			if (replicationDegree <= 0)
 			{
-				System.err.println("[error@main:82] invalid replication degree, must be greater than 0!");
-				System.exit(1);
+				Logger.abort("invalid replication degree, value must be greater than zero!");
 			}
 		}
 
@@ -90,59 +109,63 @@ public class TestApp
 		try
 		{
 			registry = LocateRegistry.getRegistry(rmiAddress.getHostAddress());
-			System.out.print(String.format("(%s) establishing connection with remote server...\n",(new Date()).toString()));
-			stub = (TestStub) registry.lookup(args[1]);
+			Logger.logDebug("establishing connection with remote object \"" + rmiObject + "\"...");
+			stub = (TestStub) registry.lookup(rmiObject);
+			Logger.logDebug("connected to initiator peer, sending user request...");
 		}
-		catch (NotBoundException | IOException ex)
+		catch (NotBoundException ex)
 		{
-			System.err.println(ex.getMessage());
-			System.exit(1);
+			Logger.abort("remote object not registered on the target machine!");
+		}
+		catch (IOException ex)
+		{
+			Logger.abort("could not connect to target machine, is rmiregistry running?");
 		}
 
 		try
 		{
+			boolean remoteResult = false;
+			
+			Logger.logDebug("message sent, waiting for peer response...");
+			
 			if (paramType.equals("BACKUP"))
 			{
-				stub.backupFile(fileId, replicationDegree);
+				remoteResult = stub.backupFile(fileId, replicationDegree);
 			}
 			else if (paramType.equals("BACKUPENH"))
 			{
-				stub.backupEnhanced(fileId, replicationDegree);
+				remoteResult = stub.backupEnhanced(fileId, replicationDegree);
 			}
 			else if (paramType.equals("DELETE"))
 			{
-				stub.deleteFile(fileId);
+				remoteResult = stub.deleteFile(fileId);
 			}
 			else if (paramType.equals("DELETEENH"))
 			{
-				stub.deleteEnhanced(fileId);
+				remoteResult = stub.deleteEnhanced(fileId);
 			}
 			else if (paramType.equals("RESTORE"))
 			{
-				stub.restoreFile(fileId);
+				remoteResult = stub.restoreFile(fileId);
 			}
 			else if (paramType.equals("RESTOREENH"))
 			{
-				stub.restoreEnhanced(fileId);
+				remoteResult = stub.restoreEnhanced(fileId);
 			}
 			else if (paramType.equals("RECLAIM"))
 			{
-				stub.reclaimSpace();
+				remoteResult = stub.reclaimSpace();
 			}
 			else if (paramType.equals("RECLAIMENH"))
 			{
-				stub.reclaimEnhanced();
+				remoteResult = stub.reclaimEnhanced();
 			}
-			else
-			{
-				System.err.println("[error@main:138] user has entered an invalid command!");
-				System.exit(1);
-			}
+					
+			Logger.logDebug("command returned \"" + remoteResult + "\"");
 		}
 		catch (RemoteException ex)
 		{
-			System.err.println(ex.getMessage());
-			System.exit(1);
+			Logger.abort("could not forward the request to the initiator peer!");
 		}
 	}
 }

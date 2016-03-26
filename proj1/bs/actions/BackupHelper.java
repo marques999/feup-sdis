@@ -1,74 +1,77 @@
 package bs.actions;
 
+import bs.BackupGlobals;
+import bs.BackupSystem;
+import bs.ControlService;
 import bs.filesystem.Chunk;
-import bs.server.ProtocolCommand;
+import bs.logging.Logger;
 
 public class BackupHelper extends Thread
 {
-	private static final long waitingTime = 1000;
-	private static final int maximumAttempts = 5;
+	private final Chunk myChunk;
+	private final String msgBackupTimeout = "couldn't reach desired replication degree, trying again...";
+	private final String msgBackupFailed = "reached maximum attempts to backup chunk with desired replication degree!";
+	private final String msgBackupSuccessful = "chunk with id=%d was backed up sucessfully!";
+	private final String msgBackupInformation = "%d peers have backed up chunk with id=%d (desired replication degree is %d)\n";
 
-	private final Chunk m_chunk;
-	private final ProtocolCommand m_commandChannel;
-
-	public BackupHelper(final Chunk paramChunk, final ProtocolCommand mc)
+	public BackupHelper(final Chunk paramChunk)
 	{
-		m_chunk = paramChunk;
-		m_commandChannel = mc;
+		myChunk = paramChunk;
 	}
 	
 	@Override
 	public void run()
 	{
-		m_commandChannel.registerConfirmations(m_chunk);
-
 		int currentAttempt = 0;
-		boolean done = false;
+		int chunkId = myChunk.getChunkId();
+		int replicationDegree = myChunk.getReplicationDegree();
+		int waitingTime = BackupGlobals.initialWaitingTime;
+		boolean m_result = false;
 		
-		while (!done)
+		ControlService controlService = BackupSystem.getControlService();
+		controlService.subscribeConfirmations(myChunk);
+		
+		while (!m_result)
 		{
-			m_commandChannel.clearRegistration(m_chunk);
-
-			Peer.getCommandForwarder().sendPUTCHUNK(m_chunk);
+			controlService.resetPeerConfirmations(myChunk);
+			BackupSystem.sendPUTCHUNK(myChunk);
 
 			try
 			{
-				System.out.println("Waiting for STOREDs for " + waitingTime + "ms");
+				Logger.logDebug("waiting for STORED confirmations...");
 				Thread.sleep(waitingTime);
 			}
-			catch (InterruptedException e)
+			catch (InterruptedException ex)
 			{
-				e.printStackTrace();
+				ex.printStackTrace();
 			}
 
-			int confirmedRepDeg = m_commandChannel.getConfirmations(m_chunk);
+			int numberConfirmations = controlService.getPeerConfirmations(myChunk);
 
-			System.out.println(confirmedRepDeg + " peers have backed up chunk no. "
-					+ m_chunk.getChunkId() + ". (desired: "
-					+ m_chunk.getReplicationDegree() + " )");
+			System.out.print(String.format(msgBackupInformation, numberConfirmations, chunkId, replicationDegree));
 
-			if (confirmedRepDeg < m_chunk.getReplicationDegree())
+			if (numberConfirmations < replicationDegree)
 			{
 				currentAttempt++;
 
-				if (currentAttempt > maximumAttempts)
+				if (currentAttempt > BackupGlobals.maximumAttempts)
 				{
-					System.out.println("[INFORMATION] reached maximum number of attempts to backup chunk with desired replication degree.");
-					done = true;
+					Logger.logError(msgBackupFailed);
+					m_result = true;
 				}
 				else
 				{
-					System.out.println("[INFORMATION] desired replication degree was not reached. Trying again...");
-					//waitingTime *= 2;
+					Logger.logWarning(msgBackupTimeout);
+					waitingTime *= 2;
 				}
 			}
 			else
 			{
-				System.out.println("[INFORMATION] reached desired replication degree!");
-				done = true;
+				Logger.logDebug(String.format(msgBackupSuccessful, chunkId));
+				m_result = true;
 			}
 		}
 
-		m_commandChannel.unregisterConfirmations(m_chunk);
+		controlService.unsubscribeConfirmations(myChunk);
 	}
 }

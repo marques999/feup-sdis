@@ -1,4 +1,4 @@
-package bs.server;
+package bs.protocol;
 
 import bs.logging.ProgramException;
 

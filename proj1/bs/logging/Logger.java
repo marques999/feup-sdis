@@ -4,14 +4,11 @@ import bs.protocol.Message;
 
 public class Logger
 {
-	private static final String fmtGeneric = "[%s()] :: %s\n";
-	private static final String fmtCommand = "[%s()] :: received %s command!\n";
 	private static final String fmtPayload = "[%s()] :: dumping payload contents...\n";
 	private static final String fmtHeader =  "[%s()] :: dumping message header...\n";
-	private static final String fmtState = "[parseCommand()] :: parsing %s command...\n";
-	//
-	public static final boolean DEBUG = true;
-	
+	private static final String msgIssueChunkCommand = "--[DEBUG]-- sending %s for chunk with id=%d\n";
+	private static final String msgIssueFileCommand ="--[DEBUG]-- requesting %s...\n";
+
 	public static void dumpPayload(final String paramFunction, final Message paramMessage)
 	{
 		if (DEBUG)
@@ -21,11 +18,19 @@ public class Logger
 		}
 	}
 	
-	public static void logState(final String paramState)
+	public static void logChunkCommand(final String paramType, final String fileId, int chunkId)
 	{
 		if (DEBUG)
 		{
-			System.out.print(String.format(fmtState, paramState));
+			System.out.print(String.format(msgIssueChunkCommand, paramType, chunkId));
+		}
+	}
+	
+	public static void logFileCommand(final String paramType, final String fileId)
+	{
+		if (DEBUG)
+		{
+			System.out.print(String.format(msgIssueFileCommand, paramType));
 		}
 	}
 	
@@ -37,20 +42,35 @@ public class Logger
 			paramMessage.dump();
 		}
 	}
-	
-	public static void logCommand(final String paramFunction, final String paramCommand)
-	{
-		if (DEBUG)
-		{
-			System.out.print(String.format(fmtCommand, paramFunction, paramCommand));
-		}
-	}
 
-	public static void logGeneric(final String paramFunction, final String paramMessage)
+	public static void logDebug(final String paramMessage)
 	{
 		if (DEBUG)
 		{
-			System.out.print(String.format(fmtGeneric, paramFunction, paramMessage));
+			System.out.println("--[DEBUG]-- " + paramMessage);
 		}
 	}
+	
+	public static void logWarning(final String paramMessage)
+	{
+		System.out.println("--[WARNING]-- " + paramMessage);
+	}
+	
+	public static void logInformation(final String paramMessage)
+	{
+		System.out.println("--[INFORMATION]-- " + paramMessage);
+	}
+	
+	public static void logError(final String paramMessage)
+	{
+		System.out.println("--[ERROR]-- " + paramMessage);
+	}
+	
+	public static void abort(final String paramMessage)
+	{
+		System.out.println("--[ERROR]-- " + paramMessage);
+		System.exit(1);
+	}
+	
+	private static final boolean DEBUG = true;
 }

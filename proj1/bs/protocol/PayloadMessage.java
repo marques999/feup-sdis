@@ -60,6 +60,11 @@ public abstract class PayloadMessage extends Message
 	{
 		return m_degree;
 	}
+	
+	public byte[] getBody()
+	{
+		return m_body;
+	}
 
 	protected PayloadMessage(final Chunk paramChunk, int replicationDegree)
 	{
@@ -107,11 +112,6 @@ public abstract class PayloadMessage extends Message
 		}
 
 		return (String.join(" ", m_header) + "\r\n\r\n").getBytes();
-	}
-
-	public final Chunk generateChunk()
-	{
-		return new Chunk(m_body, getFileId(), m_chunkId, m_degree);
 	}
 	
 	@Override

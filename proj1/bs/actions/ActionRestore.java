@@ -1,36 +1,30 @@
 package bs.actions;
 
+import java.util.Random;
+
+import bs.BackupGlobals;
 import bs.BackupSystem;
+import bs.RestoreService;
 import bs.filesystem.BackupStorage;
-import bs.filesystem.BadChunkException;
-import bs.filesystem.Chunk;
 import bs.filesystem.ChunkRestore;
 import bs.filesystem.FileInformation;
 import bs.filesystem.FileManager;
-import bs.server.ProtocolCommand;
-import bs.server.ProtocolRestore;
+import bs.logging.Logger;
+import bs.logging.ProgramException;
 
 public class ActionRestore extends Thread
 {
 	private final String m_fileName;
-	private final ProtocolRestore m_restoreChannel;
-	private final ProtocolCommand m_commandChannel;
-	private final BackupStorage bsdbInstance;
-	private final FileManager fmInstance;
-	private final String msgFileNotFound;
+	private final Random m_random = new Random();
+	private final FileManager fmInstance = BackupSystem.getFiles();
+	private final BackupStorage bsdbInstance = BackupSystem.getStorage();
 
-	public ActionRestore(final String fileName, final ProtocolCommand mc, final ProtocolRestore mdr)
+	public ActionRestore(final String fileName)
 	{
 		m_fileName = fileName;
-		m_result = false;
-		m_restoreChannel = mdr;
-		m_commandChannel = mc;
-		fmInstance = BackupSystem.getFiles();
-		bsdbInstance = BackupSystem.getStorage();
-		msgFileNotFound = String.format("[ERROR] The requested file was not found in the network and cannot be restored.\n", m_fileName);
 	}
 	
-	private boolean m_result;
+	private boolean m_result = false;
 	
 	public boolean getResult()
 	{
@@ -40,6 +34,7 @@ public class ActionRestore extends Thread
 	@Override
 	public void run()
 	{
+		final RestoreService restoreService = BackupSystem.getRestoreService();
 		final FileInformation restoreInformation = bsdbInstance.getRestoreInformation(m_fileName);
 
 		if (restoreInformation != null)
@@ -47,21 +42,44 @@ public class ActionRestore extends Thread
 			final ChunkRestore recoveredChunks = new ChunkRestore(restoreInformation);
 			final String fileId = restoreInformation.getFileId();
 
-			m_restoreChannel.subscribeChunks(fileId);
+			restoreService.startReceivingChunks(fileId);
+			
+			int currentChunk = 0;
+			int numberChunks = restoreInformation.getCount();
 
-			for (int i = 0; i < restoreInformation.getCount(); i++)
+			for (int i = 0; i < numberChunks; i++)
 			{
-				m_commandChannel.sendGETCHUNK(fileId, i);
-				recoveredChunks.put(m_restoreChannel.getChunk(fileId, i));
+				BackupSystem.sendGETCHUNK(fileId, i);
+				
+				try
+				{
+					Thread.sleep(m_random.nextInt(BackupGlobals.maximumBackoffTime));
+				}
+				catch (InterruptedException ex)
+				{
+					ex.printStackTrace();
+				}
+			}
+			
+			while (currentChunk != numberChunks)
+			{		
+				if (recoveredChunks.put(restoreService.retrieveChunk(fileId, currentChunk)))
+				{
+					currentChunk++;
+				}
 			}
 
-			m_restoreChannel.unsubscribeChunks(fileId);
+			restoreService.stopReceivingChunks(fileId);
 
 			try
 			{
-				m_result = fmInstance.writeFile(m_fileName, recoveredChunks.join());
+				if (fmInstance.writeFile(m_fileName, recoveredChunks.join()))
+				{
+					bsdbInstance.unregisterRestore(m_fileName);
+					m_result = true;
+				}
 			}
-			catch (BadChunkException ex)
+			catch (ProgramException ex)
 			{
 				ex.printMessage();
 				m_result = false;
@@ -69,8 +87,7 @@ public class ActionRestore extends Thread
 		}
 		else
 		{
-			System.out.print(msgFileNotFound);
-			m_result = false;
+			Logger.logError("requested file was not found in the network, cannot restore!");
 		}
 	}
 }

@@ -9,16 +9,16 @@ public class ProgramException extends Exception
 		m_message = paramMessage;
 	}
 	
-	private String m_message;
-	
-	public void printMessage()
-	{
-		System.out.println(m_message);
-	}
-	
+	private final String m_message;
+		
 	@Override
-	public String getMessage()
+	public final String getMessage()
 	{
 		return m_message;
+	}
+
+	public final void printMessage()
+	{
+		System.out.println(m_message);
 	}
 }

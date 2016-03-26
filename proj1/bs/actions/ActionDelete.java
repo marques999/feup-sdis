@@ -4,29 +4,20 @@ import bs.BackupSystem;
 import bs.filesystem.BackupStorage;
 import bs.filesystem.FileInformation;
 import bs.filesystem.FileManager;
-import bs.server.ProtocolCommand;
+import bs.logging.Logger;
 
 public class ActionDelete extends Thread
 {
+	private final FileManager fmInstance = BackupSystem.getFiles();
+	private final BackupStorage bsdbInstance = BackupSystem.getStorage();
 	private final String m_fileName;
-	private final ProtocolCommand m_commandChannel;
-	private final BackupStorage bsdbInstance;
-	private final FileManager fmInstance;
-	private final String msgPeersHaveChunks;
-	private final String msgNoChunksFound;
 
-	public ActionDelete(final String fileName, final ProtocolCommand mc)
+	public ActionDelete(final String fileName)
 	{
 		m_fileName = fileName;
-		m_commandChannel = mc;
-		m_result = false;
-		fmInstance = BackupSystem.getFiles();
-		bsdbInstance = BackupSystem.getStorage();
-		msgPeersHaveChunks = String.format("[INFORMATION] file %s was previously backed up by some peers in this network.\n", m_fileName);
-		msgNoChunksFound = String.format("[INFORMATION] no peers in this network seem to have backed up the file %s.\n",	m_fileName);
 	}
 	
-	private boolean m_result;
+	private boolean m_result = false;
 	
 	public boolean getResult()
 	{
@@ -38,22 +29,33 @@ public class ActionDelete extends Thread
 	{
 		if (fmInstance.fileExists(m_fileName))
 		{
-			fmInstance.deleteFile(m_fileName);
-		}
+			final FileInformation restoreInformation = bsdbInstance.getRestoreInformation(m_fileName);
 
-		final FileInformation restoreInformation = bsdbInstance.getRestoreInformation(m_fileName);
-
-		if (restoreInformation != null)
-		{
-			System.out.print(msgPeersHaveChunks);
-			m_commandChannel.sendDELETE(restoreInformation.getFileId());
-			bsdbInstance.unregisterRestore(m_fileName);
-			m_result = true;
+			if (fmInstance.deleteFile(m_fileName))
+			{
+				Logger.logDebug("deleted " + m_fileName + " from files/ directory...");
+				
+				if (restoreInformation == null)
+				{
+					Logger.logDebug("peers in this network have not backed up this file.");
+				}
+				else
+				{
+					Logger.logDebug("file was previously backed up by some peers in this network.");
+					BackupSystem.sendDELETE(restoreInformation.getFileId());
+				}
+			
+				bsdbInstance.unregisterRestore(m_fileName);
+				m_result = true;
+			}
+			else
+			{
+				Logger.logError("something bad happened while trying to delete " + m_fileName + "!");
+			}
 		}
 		else
 		{
-			m_result = false;
-			System.out.print(msgNoChunksFound);
+			Logger.logError("requested file doesn't exist in the filesystem!");
 		}
 	}
 }

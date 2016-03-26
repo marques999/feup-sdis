@@ -8,65 +8,57 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
 import bs.BackupSystem;
+import bs.logging.Logger;
 
 public class FileManager
 {
-	public FileManager(int peerId)
-	{
-		LocalDirectory = "files/";
-		ChunksDirectory = "backup$" + peerId + "/";
-		RestoreDirectory = "restore$" + peerId + "/";
-		LocalStorage = BackupSystem.getStorage();
-	}
-
 	private final BackupStorage LocalStorage;
 	private final String LocalDirectory;
 	private final String ChunksDirectory;
 	private final String RestoreDirectory;
 	
+	public FileManager(int peerId)
+	{
+		LocalDirectory = "files/";
+		createDirectory(LocalDirectory);
+		ChunksDirectory = "backup$" + peerId + "/";
+		createDirectory(ChunksDirectory);
+		RestoreDirectory = "restore$" + peerId + "/";
+		createDirectory(RestoreDirectory);
+		LocalStorage = BackupSystem.getStorage();
+	}
+
 	public final boolean fileExists(final String paramFile)
 	{
 		final File file = new File(LocalDirectory + paramFile);
 		return file.exists() && file.isFile();
 	}
 
-	private final boolean directoryExists(final String paramDirectory)
+	public final boolean chunkExists(final String fileId, int chunkId)
 	{
-		final File file = new File(paramDirectory);
-		return file.exists() && file.isDirectory();
+		final File file = new File(generateFilename(fileId, chunkId));
+		return file.exists() && file.isFile();
 	}
 
 	private final boolean createDirectory(final String paramDirectory)
 	{
-		return new File(paramDirectory).mkdir();
-	}
-
-	public final byte[] readFile(final File paramFile)
-	{
-		final byte[] fileBuffer = new byte[(int) paramFile.length()];
-
-		try (final FileInputStream inputStream = new FileInputStream(paramFile))
+		final File file = new File(paramDirectory);
+		
+		if (!file.exists() || !file.isDirectory())
 		{
-			inputStream.read(fileBuffer);
+			return file.mkdir();
 		}
-		catch (IOException ex)
-		{
-			return null;
-		}
-
-		return fileBuffer;
+		
+		return true;
 	}
 
 	public final boolean writeFile(final String paramFile, byte[] paramBuffer)
 	{
 		boolean returnValue = true;
 	
-		if (!directoryExists(RestoreDirectory))
+		if (!createDirectory(RestoreDirectory))
 		{
-			if (!createDirectory(RestoreDirectory))
-			{
-				return false;
-			}
+			return false;
 		}
 		
 		try (final FileOutputStream out = new FileOutputStream(RestoreDirectory + paramFile))
@@ -83,18 +75,7 @@ public class FileManager
 
 	public final boolean deleteFile(final String fileId)
 	{
-		boolean operationResult = new File(LocalDirectory + fileId).delete();
-		
-		if (operationResult)
-		{
-			System.out.println("[INFORMATION] Deleted " + fileId + " from " + LocalDirectory + " folder...");
-		}
-		else
-		{
-			System.out.println("[ERROR] Uh-oh, something bad happened while trying to delete " + fileId + "!");
-		}
-		
-		return operationResult;
+		return new File(LocalDirectory + fileId).delete();
 	}
 	
 	private final String generateFilename(final String fileId, int chunkId)
@@ -105,21 +86,24 @@ public class FileManager
 	public final boolean deleteChunk(final String fileId, int chunkId)
 	{
 		final File file = new File(generateFilename(fileId, chunkId));
-		return file.delete() && LocalStorage.removeChunk(fileId, chunkId);
+		
+		Logger.logDebug("deleting " + file.getName() + "...");
+
+		if (file.exists())
+		{
+			return file.delete();
+		}
+		
+		return false;
 	}
 
 	public final boolean writeChunk(final Chunk paramChunk)
 	{
-		// 1) create output directory
-		if (!directoryExists(ChunksDirectory))
+		if (!createDirectory(ChunksDirectory))
 		{
-			if (!createDirectory(ChunksDirectory))
-			{
-				return false;
-			}
+			return false;
 		}
 
-		// 2) write chunk
 		final String chunkFilename = generateFilename(paramChunk.getFileId(), paramChunk.getChunkId());
 	
 		try (final ObjectOutputStream objectOutputStream = new ObjectOutputStream(new FileOutputStream(chunkFilename)))
@@ -131,14 +115,10 @@ public class FileManager
 			return false;
 		}
 
-		// 3) update database & disk space
-		LocalStorage.putChunk(paramChunk);
-		//Peer.getDisk().saveFile(data.length);
-		
-		return true;
+		return LocalStorage.putChunk(paramChunk);
 	}
 
-	public final Chunk readChunk(final String fileId, int chunkId)
+	public final Chunk readChunk(final String fileId, int chunkId) throws IOException
 	{
 		final String chunkFilename = generateFilename(fileId, chunkId);
 		
@@ -147,10 +127,6 @@ public class FileManager
 			return (Chunk) objectInputStream.readObject();
 		}
 		catch (ClassNotFoundException ex)
-		{
-			ex.printStackTrace();
-		}
-		catch (IOException ex)
 		{
 			ex.printStackTrace();
 		}

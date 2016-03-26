@@ -8,32 +8,21 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.rmi.RemoteException;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.server.UnicastRemoteObject;
 
-import bs.actions.ActionBackup;
-import bs.actions.ActionDelete;
-import bs.actions.ActionRestore;
 import bs.filesystem.BackupStorage;
 import bs.filesystem.Chunk;
-import bs.filesystem.ChunkBackup;
 import bs.filesystem.FileManager;
-import bs.server.ProtocolBackup;
-import bs.server.ProtocolCommand;
-import bs.server.ProtocolRestore;
-import bs.test.TestStub;
+import bs.logging.Logger;
+import bs.protocol.ChunkMessage;
+import bs.protocol.DeleteMessage;
+import bs.protocol.GetchunkMessage;
+import bs.protocol.Message;
+import bs.protocol.PutchunkMessage;
+import bs.protocol.RemovedMessage;
+import bs.protocol.StoredMessage;
 
-public class BackupSystem implements TestStub
+public class BackupSystem
 {
-	private static final int MINIMUM_ARGUMENTS = 2;
-	private static final int NUMBER_ARGUMENTS = 5;
-	private static final int DEFAULT_CONTROL_PORT = 8080;
-	private static final int DEFAULT_BACKUP_PORT = 8081;
-	private static final int DEFAULT_RESTORE_PORT = 8082;
-	
-	//----------------------------------------------------
-	
 	private static int myPeerId = -1;
 
 	public static int getPeerId()
@@ -52,13 +41,30 @@ public class BackupSystem implements TestStub
 	
 	//----------------------------------------------------
 	
-	private static ProtocolCommand MC;
-	private static ProtocolBackup MDB;
-	private static ProtocolRestore MDR;
-	private static WorkerBackup backupThread;
-	private static WorkerRestore restoreThread;
-	private static WorkerCommand commandThread;
-	private static File bsdbFilename;
+	private static BackupService svcBackup;
+	
+	public static BackupService getBackupService()
+	{
+		return svcBackup;
+	}
+	
+	//----------------------------------------------------
+	
+	private static RestoreService svcRestore;
+	
+	public static RestoreService getRestoreService()
+	{
+		return svcRestore;
+	}
+	
+	//----------------------------------------------------
+	
+	private static ControlService svcControl;
+	
+	public static ControlService getControlService()
+	{
+		return svcControl;
+	}	
 	
 	//----------------------------------------------------
 	
@@ -70,7 +76,35 @@ public class BackupSystem implements TestStub
 	}
 	
 	//----------------------------------------------------
+		
+	private static Connection MDB;	
 	
+	private static boolean issueBackupCommand(final Message paramMessage)
+	{	
+		return MDB.send(paramMessage.getMessage());
+	}
+	
+	//----------------------------------------------------
+	
+	private static Connection MC;
+	
+	private static boolean issueControlCommand(final Message paramMessage)
+	{
+		return MC.send(paramMessage.getMessage());
+	}
+
+	//----------------------------------------------------
+	
+	private static Connection MDR;
+	
+	private static boolean issueRestoreCommand(final Message paramMessage)
+	{
+		return MDR.send(paramMessage.getMessage());
+	}
+	
+	//----------------------------------------------------
+	
+	private static File bsdbFilename;
 	private static FileManager fmInstance;
 	
 	public static FileManager getFiles()
@@ -80,23 +114,72 @@ public class BackupSystem implements TestStub
 	
 	//----------------------------------------------------
 	
-	public static boolean readStorage()
+	public static void initializeStorage(final File bsdbFilename)
 	{
-		try (final ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream(bsdbFilename)))
+		if (bsdbFilename.exists())
 		{
-			bsdbInstance = (BackupStorage) objectInputStream.readObject();
+			try (final ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream(bsdbFilename)))
+			{
+				bsdbInstance = (BackupStorage) objectInputStream.readObject();
+			}
+			catch (Exception ex)
+			{
+				Logger.logError("could not read database state, but file exists!");
+				System.exit(1);
+			}
 		}
-		catch (ClassNotFoundException ex)
+		else
 		{
-			ex.printStackTrace();
+			bsdbInstance = new BackupStorage(bsdbFilename);
+			
+			if (!writeStorage())
+			{
+				Logger.logError("could not write database state to disk!");
+				System.exit(1);
+			}
 		}
-		catch (IOException ex)
-		{
-			return false;
-		}
-
-		return true;
+		
+		fmInstance = new FileManager(myPeerId);
 	}
+
+	//----------------------------------------------------
+
+	public static boolean sendCHUNK(final Chunk paramChunk)
+	{
+		Logger.logChunkCommand("CHUNK", paramChunk.getFileId(), paramChunk.getChunkId());	
+		return issueRestoreCommand( new ChunkMessage(paramChunk));
+	}
+	
+	public static boolean sendDELETE(final String fileId)
+	{
+		return issueControlCommand(new DeleteMessage(fileId));
+	}
+	
+	public static boolean sendGETCHUNK(final String fileId, int chunkId)
+	{
+		Logger.logChunkCommand("GETCHUNK", fileId, chunkId);	
+		return issueControlCommand(new GetchunkMessage(fileId, chunkId));
+	}
+	
+	public static boolean sendPUTCHUNK(final Chunk paramChunk)
+	{
+		Logger.logChunkCommand("PUTCHUNK", paramChunk.getFileId(), paramChunk.getChunkId());	
+		return issueBackupCommand(new PutchunkMessage(paramChunk));
+	}
+
+	public static boolean sendREMOVED(final String fileId, int chunkId)
+	{
+		Logger.logChunkCommand("REMOVED", fileId, chunkId);	
+		return issueControlCommand(new RemovedMessage(fileId, chunkId));
+	}
+
+	public static boolean sendSTORED(final Chunk paramChunk)
+	{
+		Logger.logChunkCommand("STORED", paramChunk.getFileId(), paramChunk.getChunkId());	
+		return issueControlCommand(new StoredMessage(paramChunk.getFileId(), paramChunk.getChunkId()));
+	}
+	
+	//----------------------------------------------------
 	
 	public static boolean writeStorage()
 	{
@@ -124,18 +207,24 @@ public class BackupSystem implements TestStub
 		return true;
 	}
 	
-	// ----------------------------------------------------
+	//----------------------------------------------------
 
 	public static void main(final String[] args) throws IOException
 	{
-		if (args.length < MINIMUM_ARGUMENTS || args.length > NUMBER_ARGUMENTS)
+		if (BackupGlobals.checkPeerArguments(args.length))
 		{
-			System.out.println("usage: BackupSystem <Host> <PeerId> [<McPort> <MdbPort> <MdrPort>]");
-			System.exit(1);
+			initializePeer(args);
 		}
+		else
+		{
+			System.out.println("usage: BackupSystem <Host> <PeerId> [<McPort> <MdbPort> <MdrPort>]");		
+		}	
+	}
 
+	protected static void initializePeer(final String[] args)
+	{
 		InetAddress myHost = null;
-		System.out.println("[main()]::attempting to parse multicast group address...");
+		Logger.logDebug("attempting to parse multicast group address...");
 
 		try
 		{
@@ -143,15 +232,10 @@ public class BackupSystem implements TestStub
 		}
 		catch (UnknownHostException ex)
 		{
-			System.out.println("[main()]::invalid multicast group address!");
-			System.exit(1);
+			Logger.abort("invalid multicast group address!");
 		}
-
-		int multicastControlPort = DEFAULT_CONTROL_PORT;
-		int multicastBackupPort = DEFAULT_BACKUP_PORT;
-		int multicastRestorePort = DEFAULT_RESTORE_PORT;
-
-		System.out.println("[main()]::attempting to parse peer identifier...");
+		
+		Logger.logDebug("attempting to parse peer identifier...");
 
 		try
 		{
@@ -159,12 +243,14 @@ public class BackupSystem implements TestStub
 		}
 		catch (NumberFormatException ex)
 		{
-			System.out.println("[main()]::invalid peer identifier, please enter a positive integer!");
-			System.exit(1);
+			Logger.abort("invalid peer identifier, please enter a positive integer!");
 		}
 
-		System.out.println(
-				"[main()]::attempting to parse control channel port...");
+		int multicastBackupPort = BackupGlobals.defaultBackupPort;
+		int multicastControlPort = BackupGlobals.defaultControlPort;
+		int multicastRestorePort = BackupGlobals.defaultRestorePort;
+
+		Logger.logDebug("attempting to parse control channel port...");
 
 		try
 		{
@@ -172,10 +258,10 @@ public class BackupSystem implements TestStub
 		}
 		catch (ArrayIndexOutOfBoundsException | NumberFormatException ex)
 		{
-			System.out.println("[main()]::invalid or missing control channel port, assuming default...");
+			Logger.logError("invalid or missing control channel port, assuming default...");
 		}
 
-		System.out.println("[main()]::attempting to parse backup channel port...");
+		Logger.logDebug("attempting to parse backup channel port...");
 
 		try
 		{
@@ -183,196 +269,40 @@ public class BackupSystem implements TestStub
 		}
 		catch (IndexOutOfBoundsException | NumberFormatException ex)
 		{
-			System.out.println("[main()]::invalid or missing backup channel port, assuming default...");
+			Logger.logError("invalid or missing backup channel port, assuming default...");
 		}
 
-		System.out.println("[main()]::atempting to parse restore channel port...");
+		Logger.logDebug("atempting to parse restore channel port...");
 
 		try
 		{
 			multicastRestorePort = Integer.parseInt(args[4]);
-		} catch (IndexOutOfBoundsException | NumberFormatException ex)
+		}
+		catch (IndexOutOfBoundsException | NumberFormatException ex)
 		{
-			System.out.println(
-					"[main()]::invalid or missing restore channel port, assuming default...");
+			Logger.logError("invalid or missing restore channel port, assuming default...");
 		}
 		
 		//----------------------------------------------------
 		
-		final InetAddress serverAddress = myHost;
-		
-		MC = new ProtocolCommand(serverAddress, multicastControlPort);
-		MDB = new ProtocolBackup(serverAddress, multicastBackupPort);
-		MDR = new ProtocolRestore(serverAddress, multicastRestorePort);
-		
+		MDB = new Connection("backup channel", myHost, multicastBackupPort, false);
+		MDR = new Connection("restore channel", myHost, multicastRestorePort, false);
+		MC = new Connection("control channel", myHost, multicastControlPort, false);
+	
 		//----------------------------------------------------
 		
 		bsdbFilename = new File("storage$"+ myPeerId + ".bsdb");
-	
-		if (bsdbFilename.exists())
-		{
-			if (!readStorage())
-			{
-				System.err.print("error reading database state!");
-				System.exit(1);
-			}
-		}
-		else
-		{
-			bsdbInstance = new BackupStorage(bsdbFilename);
-			
-			if (!writeStorage())
-			{
-				System.err.print("error saving database state!");
-				System.exit(1);
-			}
-		}
-		
-		//----------------------------------------------------
-		
-		fmInstance = new FileManager(myPeerId);
-		
-		//----------------------------------------------------
-
-		// wb = new WorkerBackup(MC, MDB);
-		// wr = new WorkerRestore(MDR);
-		// wc = new WorkerCommand(MC, wb, wr);
-		// wb.start();
-		// wr.start();
-		// wc.start();
-		
-		staticBackupFile("example.bin", 4);
-		writeStorage();
+		initializeStorage(bsdbFilename);
 		bsdbInstance.dumpStorage();
 		bsdbInstance.dumpRestore();
 		
-		byte[] testBuffer = {1, 2, 3};
-		Chunk testChunk = new Chunk(testBuffer, "abc", 3, 3);
-		MC.subscribeNotifications(testChunk);
-		MC.registerConfirmation("abc", 3, 1);
-		MC.registerConfirmation("abc", 3, 2);
-		MC.registerConfirmation("abc", 3, 1);
-		MC.registerConfirmation("abc", 3, 1);
-		MC.registerConfirmation("abc", 3, 2);
-		System.out.println(MC.getConfirmations(testChunk));
-		
-		final BackupSystem bsInstance = new BackupSystem();
+		//----------------------------------------------------
 
-		try
-		{
-			TestStub rmiService = (TestStub) UnicastRemoteObject.exportObject(bsInstance, 0);
-			LocateRegistry.getRegistry().rebind("1234", rmiService);
-		}
-		catch (RemoteException e)
-		{
-			System.out.println("Could not bind to rmiregistry");
-		}
-	}
-
-	@Override
-	public boolean backupFile(final String fileId, int replicationDegree) throws RemoteException
-	{
-		final ActionBackup actionBackup = new ActionBackup(fileId, replicationDegree);
-		
-		actionBackup.start();
-		
-		try
-		{
-			actionBackup.join();
-		}
-		catch (InterruptedException ex)
-		{
-			return false;
-		}
-		
-		return actionBackup.getResult();
-	}
-
-	@Override
-	public boolean restoreFile(final String fileId) throws RemoteException
-	{
-		final ActionRestore actionRestore = new ActionRestore(fileId, MC, MDR);
-		
-		actionRestore.start();
-		
-		try
-		{
-			actionRestore.join();
-		}
-		catch (InterruptedException ex)
-		{
-			return false;
-		}
-		
-		return actionRestore.getResult();
-	}
-	
-	@Override
-	public boolean deleteFile(String fileId) throws RemoteException
-	{
-		final ActionDelete actionDelete = new ActionDelete(fileId, MC);
-		
-		actionDelete.start();
-		
-		try
-		{
-			actionDelete.join();
-		}
-		catch (InterruptedException ex)
-		{
-			return false;
-		}
-		
-		return actionDelete.getResult();
-	}
-	
-	public static boolean staticBackupFile(final String fileId, int replicationDegree)
-	{
-		try
-		{
-		    final ChunkBackup myChunks = new ChunkBackup(fileId, replicationDegree);
-		    final Chunk[] myChunksArray = myChunks.getChunks();
-
-		    for (int i = 0; i < myChunksArray.length; i++)
-		    { 
-				fmInstance.writeChunk(myChunksArray[i]);
-		    }
-		}
-		catch (IOException ex)
-		{
-			return false;
-		}
-
-		return true;
-	}
-	
-	@Override
-	public boolean reclaimSpace() throws RemoteException
-	{
-		return false;
-	}
-	
-	@Override
-	public boolean backupEnhanced(String fileId, int replicationDegree) throws RemoteException
-	{
-		return false;
-	}
-	
-	@Override
-	public boolean restoreEnhanced(String fileId) throws RemoteException
-	{
-		return false;
-	}
-	
-	@Override
-	public boolean deleteEnhanced(String fileId) throws RemoteException
-	{
-		return false;
-	}
-	
-	@Override
-	public boolean reclaimEnhanced() throws RemoteException
-	{
-		return false;
+		svcBackup = new BackupService(myHost, multicastBackupPort);
+		svcControl = new ControlService(myHost, multicastControlPort);
+		svcRestore = new RestoreService(myHost, multicastRestorePort);	
+		svcBackup.start();
+		svcControl.start();
+		svcRestore.start();
 	}
 }

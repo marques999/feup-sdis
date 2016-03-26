@@ -148,7 +148,7 @@ public abstract class Message
 	/*
 	 * This method returns the ID of the server that has sent the message
 	 */
-	public final int getSender()
+	public final int getPeerId()
 	{
 		return m_senderId;
 	}
