@@ -3,12 +3,14 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
 import java.util.Date;
 import java.util.HashMap;
 
-public class TCPServer
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSocket;
+
+public class SSLServer
 {
 	private static void printConnection(final InetAddress host, int port)
 	{
@@ -90,7 +92,7 @@ public class TCPServer
 	{
 		if (args.length != 1)
 		{
-			System.out.println("usage: java TCPServer <port_number>");
+			System.out.println("usage: java SSLServer <port_number> <cypher_suite>*");
 			System.exit(1);
 		}
 
@@ -106,29 +108,32 @@ public class TCPServer
 			System.exit(1);
 		}
 
-		final ServerSocket socket = new ServerSocket(serverPort);
 		final InetAddress serverAddress = InetAddress.getLocalHost();
+		final SSLServerSocketFactory serverFactory = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
+		final SSLServerSocket serverSocket = (SSLServerSocket) serverFactory.createServerSocket(serverPort);
 
 		printConnection(serverAddress, serverPort);
 
 		for (;;)
 		{
 			try (
-				final Socket clientSocket = socket.accept();
+				final SSLSocket clientSocket = (SSLSocket) serverSocket.accept();
 				final InputStreamReader socketStream = new InputStreamReader(clientSocket.getInputStream());
 				final PrintWriter socketOutput = new PrintWriter(clientSocket.getOutputStream(), false);
 				final BufferedReader socketInput = new BufferedReader(socketStream)
 				)
 			{
-				String received = socketInput.readLine();
-				printRequest(received, clientSocket.getInetAddress(), clientSocket.getPort());
-				socketOutput.print(generateResponse(received));
+				String request = socketInput.readLine();
+				printRequest(request, clientSocket.getInetAddress(), clientSocket.getPort());
+				socketOutput.print(generateResponse(request));
 				socketOutput.flush();
+				socketOutput.close();
+				socketInput.close();
 			}
 			catch (IOException ex)
 			{
 				ex.printStackTrace();
-				socket.close();
+				serverSocket.close();
 			}
 		}
 	}

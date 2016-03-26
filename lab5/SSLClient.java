@@ -3,15 +3,17 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.InetAddress;
-import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Date;
 
-public class TCPClient
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+
+public class SSLClient
 {
 	private static void printUsage()
 	{
-		System.out.println("usage: java TCPClient <hostname> <port_number> <command> <arguments>*");
+		System.out.println("usage: java SSLClient <hostname> <port_number> <command> <arguments>*");
 	}
 
 	private static void printConnection(final InetAddress paramAddress, int paramPort)
@@ -47,7 +49,6 @@ public class TCPClient
 			System.exit(1);
 		}
 
-		int bytesRead = 0;
 		int hostPort = 0;
 
 		try
@@ -84,20 +85,21 @@ public class TCPClient
 			System.exit(1);
 		}
 
-		final char[] cbuf = new char[1024];
+		char[] rbuf = new char[1024];
+		int bytesRead = 0;
 
 		try (
-			final Socket serverSocket = new Socket(hostAddress, hostPort);
-			final PrintWriter socketOutput = new PrintWriter(serverSocket.getOutputStream(), true);
-			final InputStreamReader socketStream = new InputStreamReader(serverSocket.getInputStream());
+			final SSLSocket sslSocket = (SSLSocket) SSLSocketFactory.getDefault().createSocket(hostAddress, hostPort);
+			final PrintWriter socketOutput = new PrintWriter(sslSocket.getOutputStream(), true);
+			final InputStreamReader socketStream = new InputStreamReader(sslSocket.getInputStream());
 			final BufferedReader socketInput = new BufferedReader(socketStream)
 			)
 		{
 			printConnection(hostAddress, hostPort);
 			socketOutput.println(fullCommand);
 			printCommand(fullCommand);
-			bytesRead = socketInput.read(cbuf);
-			printResponse(new String(cbuf, 0, bytesRead));
+			bytesRead = socketInput.read(rbuf);
+			printResponse(new String(rbuf, 0, bytesRead));
 		}
 		catch (IOException ex)
 		{

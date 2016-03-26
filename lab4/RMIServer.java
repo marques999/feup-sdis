@@ -88,14 +88,13 @@ public class RMIServer implements RMIStub
 			System.exit(1);
 		}
 
-		final String remoteObject = args[0];
 		final RMIServer obj = new RMIServer();
 
 		try
 		{
 			RMIStub stub = (RMIStub) UnicastRemoteObject.exportObject(obj, 0);
 			Registry registry = LocateRegistry.getRegistry();
-			registry.bind(remoteObject, stub);
+			registry.bind(args[0], stub);
 			System.out.print(String.format("(%s) server running at %s...\n",
 				(new Date()).toString(), InetAddress.getLocalHost().getHostAddress()));
 		}

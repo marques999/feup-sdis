@@ -10,7 +10,7 @@ public class RMIClient
 {
 	private static void printUsage()
 	{
-		System.out.println("usage: java UDPClient <hostname> <remote_object_name> <command> <arguments>*");
+		System.out.println("usage: java RMIClient <hostname> <remote_object_name> <command> <arguments>*");
 	}
 
 	private static void printConnection(final InetAddress paramAddress, final String remoteObject)
@@ -57,6 +57,7 @@ public class RMIClient
 		}
 
 		InetAddress hostAddress = null;
+		String fullCommand = args[2];
 
 		try
 		{
@@ -67,8 +68,6 @@ public class RMIClient
 			ex.printStackTrace();
 			System.exit(1);
 		}
-
-		String fullCommand = args[2];
 
 		if (!validateCommand(args[2], args.length))
 		{
