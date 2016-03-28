@@ -1,18 +1,15 @@
 package bs.filesystem;
 
 import java.io.Serializable;
-import java.util.Collection;
 import java.util.HashMap;
+import java.util.Set;
 
 import bs.BackupSystem;
-import bs.misc.Pair;
 
 public class ChunkCollection implements Serializable
 {
 	private static final long serialVersionUID = -108274861401132235L;
-	
-	// -----------------------------------------------------
-	
+
 	public ChunkCollection()
 	{
 		m_fileChunks = new HashMap<Integer, ChunkInformation>();
@@ -30,44 +27,46 @@ public class ChunkCollection implements Serializable
 	
 	// -----------------------------------------------------
 	
-	private HashMap<Integer, ChunkInformation> m_fileChunks;
+	private final HashMap<Integer, ChunkInformation> m_fileChunks;
 	
-	public final Collection<ChunkInformation> getChunks()
+	public final HashMap<Integer, ChunkInformation> getChunks()
 	{
-		return m_fileChunks.values();
+		return m_fileChunks;
 	}
 
 	public final Integer[] getChunkIds()
 	{
-		return (Integer[]) m_fileChunks.keySet().toArray();
+		if (m_fileChunks.isEmpty())
+		{
+			return new Integer[]{};
+		}
+		
+		int i = 0;
+		
+		final Integer[] chunkIds = new Integer[m_fileChunks.size()];
+		final Set<Integer> chunkSet = m_fileChunks.keySet();
+		
+		for (final Integer chunkId : chunkSet)
+		{
+			if (!m_fileChunks.get(chunkId).isRemote())
+			{
+				chunkIds[i++] = chunkId;
+			}
+		}
+		
+		return chunkIds;
 	}
 
 	public final int getNumberChunks()
 	{
 		return m_fileChunks.size();
 	}
-
-	// -----------------------------------------------------
-
-	public final Pair<Integer, Integer> findMostReplicated()
-	{
-		int mostReplicatedCount = Integer.MIN_VALUE;
-		int mostReplicatedId = 0;
-
-		for (int chunkId : m_fileChunks.keySet())
-		{
-			int currentCount = m_fileChunks.get(chunkId).getCount();
-
-			if (currentCount > mostReplicatedCount)
-			{
-				mostReplicatedCount = currentCount;
-				mostReplicatedId = chunkId;
-			}
-		}
-
-		return new Pair<Integer, Integer>(mostReplicatedId, mostReplicatedCount);
-	}
 	
+	public final boolean isEmpty()
+	{
+		return m_fileChunks.isEmpty();
+	}
+
 	// -----------------------------------------------------
 
 	public final ChunkInformation getChunkInformation(int chunkId)
@@ -86,12 +85,21 @@ public class ChunkCollection implements Serializable
 	 */
 	public final long removeChunk(int chunkId)
 	{
-		long chunkSize = -1;
+		long chunkSize = 0;
 	
 		if (m_fileChunks.containsKey(chunkId))
 		{
-			chunkSize = m_fileChunks.remove(chunkId).getLength();
-			m_size -= chunkSize;
+			final ChunkInformation chunkInformation = m_fileChunks.get(chunkId);
+			
+			if (chunkInformation.isRemote())
+			{
+				m_fileChunks.remove(chunkId);
+			}
+			else
+			{
+				chunkSize = m_fileChunks.remove(chunkId).getLength();
+				m_size -= chunkSize;
+			}
 		}
 
 		return chunkSize;
@@ -125,29 +133,49 @@ public class ChunkCollection implements Serializable
 	 * @brief checks if a given chunk exists
 	 * @param chunkId chunk identifier number
 	 */
-	public final boolean chunkExists(int chunkId)
+	public final boolean localChunkExists(int chunkId)
 	{
-		return m_fileChunks.containsKey(chunkId);
+		return m_fileChunks.containsKey(chunkId) && !m_fileChunks.get(chunkId).isRemote();
 	}
 	
 	/**
 	 * @brief inserts a given chunk into this collection
 	 * @param chunkId chunk identifier number
 	 */
-	public final boolean placeChunk(final Chunk chunk)
+	public final long placeChunk(final Chunk chunk, final boolean localChunk)
 	{
-		if (m_fileChunks.containsKey(chunk.getChunkId()))
-		{
-			return false;
-		}
-		
 		int chunkId = chunk.getChunkId();
+		long deltaSpace = 0;
 
-		m_fileChunks.put(chunkId, new ChunkInformation(chunk));
-		registerPeer(chunkId, BackupSystem.getPeerId());
-		m_size += chunk.getLength();
+		if (m_fileChunks.containsKey(chunkId))
+		{
+			final ChunkInformation chunkInformation = m_fileChunks.get(chunkId);
+		
+			if (chunkInformation.isRemote() && localChunk)
+			{
+				chunkInformation.setLocal();
+				deltaSpace = chunkInformation.getLength();
+				registerPeer(chunkId, BackupSystem.getPeerId());
+				m_size += deltaSpace;
+			}
+			else
+			{
+				return -1;
+			}
+		}
+		else
+		{	
+			m_fileChunks.put(chunkId, new ChunkInformation(chunk, localChunk));
+					
+			if (localChunk)
+			{
+				deltaSpace = chunk.getLength();
+				registerPeer(chunkId, BackupSystem.getPeerId());
+				m_size += chunk.getLength();
+			}
+		}
 
-		return true;
+		return deltaSpace;
 	}
 
 	public final String toString(final String fileId)

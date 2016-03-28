@@ -5,7 +5,6 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Random;
 
 import bs.filesystem.BackupStorage;
@@ -16,23 +15,11 @@ import bs.protocol.Message;
 public abstract class BaseService extends Thread
 {
 	private final Random m_random;
-	private final Connection m_connection;
+	private final MulticastConnection m_connection;
 	private final MulticastSocket m_socket;
 	protected final FileManager fmInstance;
 	protected final BackupStorage bsdbInstance;
-	
-	private static HashMap<String, Boolean> m_payloadMessage = new HashMap<>();
-	
-	static
-	{
-		m_payloadMessage.put("PUTCHUNK", true);
-		m_payloadMessage.put("CHUNK", true);
-		m_payloadMessage.put("GETCHUNK", false);
-		m_payloadMessage.put("DELETE", false);
-		m_payloadMessage.put("STORED", false);
-		m_payloadMessage.put("REMOVED", false);
-	}
-	
+
 	/**
 	 * @brief default constructor for 'BackupService' class
 	 * @param paramAddress address of the multicast channel
@@ -40,21 +27,32 @@ public abstract class BaseService extends Thread
 	 */
 	public BaseService(final String paramName, final InetAddress paramAddress, int paramPort)
 	{
-		m_connection = new Connection(paramName, paramAddress, paramPort, true);
+		m_connection = new MulticastConnection(paramName, paramAddress, paramPort, true);
 		m_random = new Random();
 		m_socket = m_connection.getSocket();
 		fmInstance = BackupSystem.getFiles();
 		bsdbInstance = BackupSystem.getStorage();
 	}
-	
+
 	private final String[] processHeader(final String paramHeader)
 	{
 		return paramHeader.trim().split(" ");
 	}
 	
+	public final MulticastConnection getConnection()
+	{
+		return m_connection;
+	}
+
 	private final boolean checkPayload(final String[] messageHeader)
 	{
-		return messageHeader.length > 1 && m_payloadMessage.get(messageHeader[Message.Type]);
+		if (messageHeader.length < 2)
+		{
+			return false;
+		}
+		
+		final String messageType = messageHeader[Message.Type];
+		return messageType.equals("CHUNK") || messageType.equals("PUTCHUNK");
 	}
 
 	private final boolean checkPeerId(final String[] messageHeader)
@@ -62,9 +60,9 @@ public abstract class BaseService extends Thread
 		return messageHeader.length > 2 && Integer.parseInt(messageHeader[Message.SenderId]) != BackupSystem.getPeerId();
 	}
 	
-	protected abstract void processMessage(final GenericMessage paramMessage, boolean hasPayload);
+	protected abstract void processMessage(final GenericMessage paramMessage, final DatagramPacket paramPacket, boolean hasPayload);
 	
-	private void umarshallMessage(final DatagramPacket paramPacket)
+	protected final void umarshallMessage(final DatagramPacket paramPacket)
 	{
 		final String convertedMessage = new String(paramPacket.getData(), paramPacket.getOffset(), paramPacket.getLength());
 		
@@ -80,11 +78,11 @@ public abstract class BaseService extends Thread
 			if (checkPayload(messageHeader))
 			{	
 				messageBody = Arrays.copyOfRange(paramPacket.getData(), payloadSeparatorEnd, payloadLength);		
-				processMessage(new GenericMessage(messageHeader, messageBody), true);
+				processMessage(new GenericMessage(messageHeader, messageBody), paramPacket, true);
 			}
 			else
 			{
-				processMessage(new GenericMessage(messageHeader), false);
+				processMessage(new GenericMessage(messageHeader), paramPacket, false);
 			}
 		}
 	}
@@ -113,9 +111,10 @@ public abstract class BaseService extends Thread
 
 		while (m_connection.available())
 		{
+			final DatagramPacket packet = new DatagramPacket(buf, buf.length);
+			
 			try
-			{
-				DatagramPacket packet = new DatagramPacket(buf, buf.length);
+			{			
 				m_socket.receive(packet);
 				umarshallMessage(packet);
 			}

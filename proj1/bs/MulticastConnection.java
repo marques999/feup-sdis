@@ -7,13 +7,13 @@ import java.net.MulticastSocket;
 
 import bs.logging.Logger;
 
-public class Connection
+public class MulticastConnection
 {	
 	private static final String msgConnected = "%s connected to %s:%d";
 	private static final String msgListening = "%s listening at %s:%d";
 	private static final String msgConnectionError = "%s: connection error!";
 
-	public Connection(final String paramName, final InetAddress paramAddress, int paramPort, boolean paramListen)
+	public MulticastConnection(final String paramName, final InetAddress paramAddress, int paramPort, boolean paramListen)
 	{
 		m_host = paramAddress;
 		m_port = paramPort;
@@ -104,8 +104,6 @@ public class Connection
 			return false;
 		}
 		
-		synchronized (m_mutex)
-		{
 			try
 			{
 				m_socket.send(new DatagramPacket(paramBuffer, paramBuffer.length, m_host, m_port));
@@ -114,8 +112,7 @@ public class Connection
 			{
 				return false;
 			}
-		}
-		
+	
 		return true;
 	}
 }

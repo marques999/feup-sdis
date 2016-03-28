@@ -1,7 +1,6 @@
 package bs;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,7 +39,7 @@ public class ControlService extends BaseService
 	 * @param hasPayload 'true' if this message should contain binary data attached
 	 */
 	@Override
-	protected void processMessage(final GenericMessage paramMessage, boolean hasPayload)
+	protected void processMessage(final GenericMessage paramMessage, final DatagramPacket paramPacket, boolean hasPayload)
 	{
 		if (hasPayload)
 		{
@@ -58,11 +57,11 @@ public class ControlService extends BaseService
 			}
 			else if (paramMessage.getType().equals("GETCHUNK"))
 			{
-				processGETCHUNK(paramMessage);
+				processGETCHUNK(paramMessage, paramPacket);		
 			}
 			else if (paramMessage.getType().equals("REMOVED"))
 			{
-				
+				processREMOVED(paramMessage);
 			}
 			else
 			{
@@ -81,12 +80,12 @@ public class ControlService extends BaseService
 		int chunkId = paramMessage.getChunkId();
 
 		/*
-		 * If this peer requested the backup, update the number of received STOREDs (replication degree).
+		 * if this peer requested the backup, update the number of received STOREDs (replication degree).
 		 */
 		registerConfirmation(paramMessage.getFileId(), chunkId, peerId);
 		
 		/*
-		 * If this peer is backing up this chunk, save the other peers which are also backing it up.
+		 * if this peer is backing up this chunk, save the other peers which are also backing it up.
 		 */
 		bsdbInstance.registerPeer(paramMessage.getFileId(), chunkId, peerId);
 	}
@@ -96,13 +95,13 @@ public class ControlService extends BaseService
 		final String fileId = paramMessage.getFileId();
 		final int chunkId = paramMessage.getChunkId();
 
-		if (bsdbInstance.hasChunk(fileId, chunkId))
+		bsdbInstance.removePeer(fileId, chunkId, paramMessage.getPeerId());
+
+		if (!bsdbInstance.hasLocalChunk(fileId, chunkId))
 		{
 			return;
 		}
-
-		bsdbInstance.removePeer(fileId, chunkId, paramMessage.getPeerId());
-
+		
 		int currentReplicationDegree = bsdbInstance.getPeerCount(fileId, chunkId);
 		int desiredReplicationDegree = bsdbInstance.getReplicationDegree(fileId, chunkId);
 		
@@ -125,13 +124,15 @@ public class ControlService extends BaseService
 
 			if (numberPutchunkMessages == 0)
 			{
-				try
+				final Chunk myChunk = fmInstance.readChunk(fileId, chunkId);
+				
+				if (myChunk != null)
 				{
-					new BackupHelper(fmInstance.readChunk(fileId, chunkId)).start();
+					new BackupHelper(myChunk).start();
 				}
-				catch (IOException ex)
+				else
 				{
-					ex.printStackTrace();
+					Logger.logDebug("could not read chunk with id=" + chunkId + " from existing archive!");
 				}
 			}
 		}
@@ -141,14 +142,15 @@ public class ControlService extends BaseService
 	 * @brief processes a GETCHUNK message sent to the control service
 	 * @param paramMessage contents of the received message
 	 */
-	public void processGETCHUNK(final GenericMessage paramMessage)
+	public void processGETCHUNK(final GenericMessage paramMessage, final DatagramPacket paramPacket)
 	{
 		final RestoreService restoreService = BackupSystem.getRestoreService();
 		final String fileId = paramMessage.getFileId();
 		
 		int chunkId = paramMessage.getChunkId();
+		boolean enableEnhancement = BackupSystem.enhancementsEnabled();
 		
-		if (bsdbInstance.hasChunk(fileId, chunkId))
+		if (bsdbInstance.hasLocalChunk(fileId, chunkId))
 		{
 			restoreService.subscribeMessages(fileId, chunkId);
 
@@ -161,21 +163,30 @@ public class ControlService extends BaseService
 				ex.printStackTrace();
 			}
 
-			if (!restoreService.unsubscribeMessages(fileId, chunkId))
+			if (restoreService.unsubscribeMessages(fileId, chunkId))
 			{
-				try
-				{
-					BackupSystem.sendCHUNK(fmInstance.readChunk(fileId, chunkId));
-				}
-				catch (IOException ex)
-				{
-					ex.printStackTrace();
-				}
+				Logger.logDebug("another peer has already sent chunk with id=" + chunkId);
 			}
 			else
 			{
-				Logger.logDebug("another peer has already sent chunk with id=" + chunkId);
-			}	
+				final Chunk myChunk = fmInstance.readChunk(fileId, chunkId);
+				
+				if (myChunk != null)
+				{
+					if (enableEnhancement)
+					{
+						BackupSystem.sendEnhancedCHUNK(myChunk, paramPacket.getAddress(), 20000 + paramMessage.getPeerId());
+					}
+					else
+					{
+						BackupSystem.sendCHUNK(myChunk);
+					}
+				}
+				else
+				{
+					Logger.logDebug("could not read chunk with id=" + chunkId + " from existing archive!");
+				}
+			}
 		}
 		else
 		{

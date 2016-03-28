@@ -68,6 +68,20 @@ public class BackupSystem
 	
 	//----------------------------------------------------
 	
+	private static boolean enableEnhancements = false;
+	
+	public static boolean enhancementsEnabled()
+	{
+		return enableEnhancements;
+	}
+	
+	public static void setEnhancements(boolean enhancementsEnabled)
+	{
+		enableEnhancements = enhancementsEnabled;
+	}
+	
+	//----------------------------------------------------
+	
 	private static BackupStorage bsdbInstance;
 	
 	public static BackupStorage getStorage()
@@ -77,7 +91,7 @@ public class BackupSystem
 	
 	//----------------------------------------------------
 		
-	private static Connection MDB;	
+	private static MulticastConnection MDB;	
 	
 	private static boolean issueBackupCommand(final Message paramMessage)
 	{	
@@ -86,7 +100,7 @@ public class BackupSystem
 	
 	//----------------------------------------------------
 	
-	private static Connection MC;
+	private static MulticastConnection MC;
 	
 	private static boolean issueControlCommand(final Message paramMessage)
 	{
@@ -95,11 +109,18 @@ public class BackupSystem
 
 	//----------------------------------------------------
 	
-	private static Connection MDR;
+	private static MulticastConnection MDR;
 	
 	private static boolean issueRestoreCommand(final Message paramMessage)
 	{
 		return MDR.send(paramMessage.getMessage());
+	}
+	
+	private static UnicastAdapter MDR_enhanced;
+	
+	private static boolean issueRestoreEnhancedCommand(final Message paramMessage, final InetAddress paramAddress, int paramPort)
+	{
+		return MDR_enhanced.send(paramMessage.getMessage(), paramAddress, paramPort);
 	}
 	
 	//----------------------------------------------------
@@ -147,7 +168,13 @@ public class BackupSystem
 	public static boolean sendCHUNK(final Chunk paramChunk)
 	{
 		Logger.logChunkCommand("CHUNK", paramChunk.getFileId(), paramChunk.getChunkId());	
-		return issueRestoreCommand( new ChunkMessage(paramChunk));
+		return issueRestoreCommand(new ChunkMessage(paramChunk));
+	}
+	
+	public static boolean sendEnhancedCHUNK(final Chunk paramChunk, final InetAddress paramAddress, int paramPort)
+	{
+		Logger.logChunkCommand("CHUNKENH", paramChunk.getFileId(), paramChunk.getChunkId());	
+		return issueRestoreEnhancedCommand(new ChunkMessage(paramChunk), paramAddress, paramPort);
 	}
 	
 	public static boolean sendDELETE(final String fileId)
@@ -285,9 +312,9 @@ public class BackupSystem
 		
 		//----------------------------------------------------
 		
-		MDB = new Connection("backup channel", myHost, multicastBackupPort, false);
-		MDR = new Connection("restore channel", myHost, multicastRestorePort, false);
-		MC = new Connection("control channel", myHost, multicastControlPort, false);
+		MDB = new MulticastConnection("backup channel", myHost, multicastBackupPort, false);
+		MDR = new MulticastConnection("restore channel", myHost, multicastRestorePort, false);
+		MC = new MulticastConnection("control channel", myHost, multicastControlPort, false);
 	
 		//----------------------------------------------------
 		
@@ -300,9 +327,16 @@ public class BackupSystem
 
 		svcBackup = new BackupService(myHost, multicastBackupPort);
 		svcControl = new ControlService(myHost, multicastControlPort);
-		svcRestore = new RestoreService(myHost, multicastRestorePort);	
+		svcRestore = new RestoreService(myHost, multicastRestorePort);			
 		svcBackup.start();
 		svcControl.start();
 		svcRestore.start();
+		
+		if (enableEnhancements)
+		{
+			Logger.logDebug("starting unicast restore protocol...");
+			MDR_enhanced = new UnicastAdapter(svcRestore, 20000 + myPeerId);
+			MDR_enhanced.start();
+		}	
 	}
 }

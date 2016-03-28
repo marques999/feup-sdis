@@ -1,70 +1,120 @@
 package bs.actions;
 
-import java.io.FileNotFoundException;
-
 import bs.BackupGlobals;
 import bs.BackupService;
 import bs.BackupSystem;
-import bs.BaseService;
 import bs.ControlService;
 import bs.RestoreService;
-import bs.filesystem.BackupStorage;
 import bs.filesystem.Chunk;
-import bs.filesystem.FileManager;
 import bs.logging.Logger;
-import bs.misc.Pair;
 
-public class ActionReclaim extends Thread
+public class ActionReclaim extends Action
 {
-	private final FileManager fmInstance;
-	private final BackupStorage bsdbInstance;
-	
-	public ActionReclaim(int amount)
+	public ActionReclaim(long reclaimAmount)
 	{
-		m_result = false;
-		fmInstance = BackupSystem.getFiles();
-		bsdbInstance = BackupSystem.getStorage();
+		numberBytes = reclaimAmount;
 	}
-		
-	private boolean m_result;
 	
-	public boolean getResult()
+	private long numberBytes;
+
+	private void reclaimEnhancement(final Chunk myChunk, final ControlService controlService)
 	{
-		return m_result;
+		Logger.logDebug("replication degree is less than desired, attempting to fix it...");
+		controlService.subscribeConfirmations(myChunk);
+
+		int waitingTime = BackupGlobals.initialWaitingTime;
+		int currentAttempt = 0;
+
+		while (!actionResult)
+		{
+			try
+			{
+				Logger.logDebug("waiting for STORED confirmations...");
+				Thread.sleep(waitingTime);
+			}
+			catch (InterruptedException ex)
+			{
+				ex.printStackTrace();
+			}
+			
+			int numberConfirmations = controlService.getPeerConfirmations(myChunk);
+
+			Logger.logDebug("received " + numberConfirmations + " confirmations for chunk with id=" + myChunk.getChunkId());
+			
+			if (numberConfirmations == 0)
+			{
+				currentAttempt++;
+
+				if (currentAttempt > BackupGlobals.maximumAttempts)
+				{
+					Logger.logWarning("peers in this network have not stored this chunk!");
+					Logger.logWarning("starting chunk backup before removing this chunk...");
+		
+					final BackupHelper backupHelper = new BackupHelper(myChunk);
+				
+					backupHelper.start();
+					
+					try
+					{
+						backupHelper.join();
+						actionResult = true;
+					}
+					catch (InterruptedException ex)
+					{
+						ex.printStackTrace();
+						actionResult = false;
+					}	
+				}
+				else
+				{
+					waitingTime *= 2;
+				}
+			}
+			else
+			{
+				actionResult = true;
+			}
+		}
+
+		controlService.unsubscribeConfirmations(myChunk);	
 	}
 
 	@Override
 	public void run()
 	{
-		final ControlService controlService = BackupSystem.getControlService();
-		final BackupService backupService = BackupSystem.getBackupService();
-		final RestoreService restoreService = BackupSystem.getRestoreService();
-		// Peer.getDisk().setCapacity(m_amount);
-
-		while (bsdbInstance.getFreeSpace() < 0)
+		if (numberBytes > bsdbInstance.getUsedSpace())
+		{
+			numberBytes = bsdbInstance.getUsedSpace();
+		}
+		
+		int bytesFreed = 0;
+		
+		while (bytesFreed < numberBytes)
 		{
 			/*
-			 * select most replicated chunk from the database
+			 * SELECT MOST REPLICATED CHUNK FROM THE DATABASE
 			 */
-			final Pair<String, Integer> mostReplicated = bsdbInstance.getMostReplicated();
+			final Chunk mostReplicated = bsdbInstance.getMostReplicated();
+			final ControlService controlService = BackupSystem.getControlService();
+			final BackupService backupService = BackupSystem.getBackupService();
+			final RestoreService restoreService = BackupSystem.getRestoreService();
 
 			if (mostReplicated != null)
 			{
-				int chunkId = mostReplicated.second();
-				final String fileId = mostReplicated.first();
-				final Chunk myChunk = fmInstance.readChunk(fileId, chunkId);	
-				
-				/*
-				 * send REMOVED and start listening for PUTCHUNK messages
-				 */
-				BackupSystem.sendREMOVED(fileId, chunkId);
-				backupService.subscribePutchunk(fileId, chunkId);
+				final String fileId = mostReplicated.getFileId();
+				final int chunkId = mostReplicated.getChunkId();
 
 				/*
-				 * wait for PUTCHUNK messages (initial waiting time: 1 second)
-				 */
+				 * SEND REMOVED MESSAGE TO OTHER PEERS		
+				 */		
+				BackupSystem.sendREMOVED(fileId, chunkId);
+				
+				/*
+				 * START LISTENING FOR PUTCHUNK MESSAGES (INITIAL WAITING TIME: 1 SECOND)
+				 */	
 				try
 				{
+					backupService.subscribePutchunk(fileId, chunkId);
 					Thread.sleep(BackupGlobals.initialWaitingTime);
 				}
 				catch (InterruptedException ex)
@@ -72,14 +122,15 @@ public class ActionReclaim extends Thread
 					ex.printStackTrace();
 				}
 				
-				// STOP LISTENING AND RETRIEVE NUMBER OF RECEIVED PUTCHNK MESSAGES
-				int numberPutchunkMessages = backupService.unsubscribePutchunk(fileId, chunkId);
-
-				/*
-				 * if no PUTCHUNK was received, it might mean that no peers are backing up this chunk
+				/* 
+				 * STOP LISTENING AND RETRIEVE NUMBER OF RECEIVED PUTCHNK MESSAGES
 				 */
 				boolean peersHaveChunk = true;
-
+				int numberPutchunkMessages = backupService.unsubscribePutchunk(fileId, chunkId);
+							
+				/*
+				 * IF NO PUTCHUNK WAS RECEIVED, it might mean that no peers are backing up this chunk
+				 */
 				if (numberPutchunkMessages == 0)
 				{
 					restoreService.startReceivingChunks(fileId);
@@ -94,7 +145,7 @@ public class ActionReclaim extends Thread
 						ex.printStackTrace();
 					}
 
-					peersHaveChunk = restoreService.hasReceivedChunk(myChunk);
+					peersHaveChunk = restoreService.hasChunk(mostReplicated);
 					restoreService.stopReceivingChunks(fileId);
 				}
 
@@ -107,66 +158,21 @@ public class ActionReclaim extends Thread
 				 */
 				if (numberPutchunkMessages > 0 || !peersHaveChunk)
 				{
-					Logger.logDebug("replication degree is less than desired. Trying to fix it.");
-					controlService.subscribeConfirmations(myChunk);
-
-					long waitingTime = BackupGlobals.initialWaitingTime;
-					int currentAtempt = 0;
-
-					while (!m_result)
-					{
-						try
-						{
-							System.out.println("Waiting for STOREDs for " + waitingTime + "ms");
-							Thread.sleep(waitingTime);
-						}
-						catch (InterruptedException ex)
-						{
-							ex.printStackTrace();
-						}
-						
-						int numberStoredMessages = controlService.getPeerConfirmations(myChunk);
-
-						if (numberStoredMessages == 0)
-						{
-							currentAtempt++;
-
-							if (currentAtempt > BackupGlobals.maximumAttempts)
-							{
-								Logger.logWarning("None of the peers has stored this chunk.");
-								Logger.logWarning("Starting chunk backup initiator before deleting this chunk.");
-
-								try
-								{
-									new BackupHelper(myChunk).start();
-								}
-								catch (FileNotFoundException ex)
-								{
-									ex.printStackTrace();
-								}
-
-								m_result = true;
-							}
-							else
-							{
-								waitingTime *= 2;
-							}
-						}
-						else
-						{
-							m_result = true;
-						}
-					}
-
-					controlService.unsubscribeConfirmations(myChunk);
+					reclaimEnhancement(mostReplicated, controlService);
 				}
 
-				Logger.logDebug("Deleting chunk no. " + chunkId);
-				m_result = fmInstance.deleteChunk(fileId, chunkId);
+				if (fmInstance.deleteChunk(fileId, chunkId))
+				{
+					bsdbInstance.removeChunk(fileId, chunkId);
+				}
+				else
+				{
+					
+				}
 			}
 			else
 			{
-				Logger.logError("There are no chunks stored. Unexpected error.");
+				Logger.logError("no chunks have been stored on this peer!");
 			}
 		}
 	}

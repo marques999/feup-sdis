@@ -68,6 +68,7 @@ public class FileManager
 		catch (IOException ex)
 		{
 			System.err.println(ex.getMessage());
+			returnValue = false;
 		}
 
 		return returnValue;
@@ -115,10 +116,10 @@ public class FileManager
 			return false;
 		}
 
-		return LocalStorage.putChunk(paramChunk);
+		return LocalStorage.registerLocalChunk(paramChunk);
 	}
 
-	public final Chunk readChunk(final String fileId, int chunkId) throws IOException
+	public final Chunk readChunk(final String fileId, int chunkId)
 	{
 		final String chunkFilename = generateFilename(fileId, chunkId);
 		
@@ -126,11 +127,9 @@ public class FileManager
 		{
 			return (Chunk) objectInputStream.readObject();
 		}
-		catch (ClassNotFoundException ex)
+		catch (IOException | ClassNotFoundException ex)
 		{
-			ex.printStackTrace();
+			return null;
 		}
-
-		return null;
 	}
 }

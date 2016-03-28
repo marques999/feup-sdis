@@ -1,27 +1,17 @@
 package bs.actions;
 
+import bs.BackupGlobals;
 import bs.BackupSystem;
-import bs.filesystem.BackupStorage;
 import bs.filesystem.FileInformation;
-import bs.filesystem.FileManager;
 import bs.logging.Logger;
 
-public class ActionDelete extends Thread
+public class ActionDelete extends Action
 {
-	private final FileManager fmInstance = BackupSystem.getFiles();
-	private final BackupStorage bsdbInstance = BackupSystem.getStorage();
 	private final String m_fileName;
 
 	public ActionDelete(final String fileName)
 	{
 		m_fileName = fileName;
-	}
-	
-	private boolean m_result = false;
-	
-	public boolean getResult()
-	{
-		return m_result;
 	}
 
 	@Override
@@ -42,11 +32,23 @@ public class ActionDelete extends Thread
 				else
 				{
 					Logger.logDebug("file was previously backed up by some peers in this network.");
-					BackupSystem.sendDELETE(restoreInformation.getFileId());
+						
+					for (int i = 0; i < BackupGlobals.maximumAttempts; i++)
+					{
+						BackupSystem.sendDELETE(restoreInformation.getFileId());
+						
+						try
+						{
+							Thread.sleep(BackupGlobals.maximumBackoffTime);
+						}
+						catch (InterruptedException ex)
+						{
+							ex.printStackTrace();
+						}
+					}
 				}
-			
-				bsdbInstance.unregisterRestore(m_fileName);
-				m_result = true;
+
+				actionResult = bsdbInstance.unregisterRestore(m_fileName);
 			}
 			else
 			{

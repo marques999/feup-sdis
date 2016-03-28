@@ -12,11 +12,13 @@ import bs.logging.Logger;
 
 public class TestApp
 {
+	private static final String messageProgramUsage = "TestApp <[host:]rmi_object> <sub_protocol> <opnd_1> [<opnd_2>]";
+	private final static String messageInvalidDegree = "invalid replication degree, value must be greater than zero!";
+	private final static String messageInvalidReclaim = "invalid reclaim amount, value must be greater than zero!";
+
 	private static String[] validCommands = {
-		"BACKUP", "BACKUPENH", 
-		"RESTORE", "RESTORENH",
-		"DELETE", "DELETEENH", 
-		"RECLAIM", "RECLAIMENH"
+		"BACKUP", "BACKUPENH", "RESTORE", "RESTORENH",
+		"DELETE", "DELETEENH", "RECLAIM", "RECLAIMENH"
 	};
 	
 	public static boolean checkCommand(final String paramType)
@@ -34,19 +36,79 @@ public class TestApp
 
 	public static void main(String[] args)
 	{
-		if (args.length < 3 || args.length > 4)
+		if (args.length < 2)
 		{
-			System.out.println("usage: TestApp <[host:]rmi_object> <sub_protocol> <opnd_1> [<opnd_2>]");
-			System.exit(1);
+			Logger.abort(messageProgramUsage);
 		}
 
 		final String rmiServer = args[0];
-		final String fileId = args[2];
-
+		final String paramType = args[1];	
+		
 		int separatorPosition = rmiServer.indexOf(':');
+		int reclaimAmount = 0;
 		int replicationDegree = 0;
 
+		final String rmiObject = rmiServer.substring(separatorPosition + 1);
+		
+		if (!checkCommand(paramType))
+		{
+			Logger.abort("command type (BACKUP|RESTORE|DELETE|RECLAIM) not recognized!");
+		}
+
+		if (paramType.equals("BACKUP") || paramType.equals("BACKUPENH"))
+		{
+			if (args.length != 4)
+			{
+				Logger.abort(messageProgramUsage);
+			}
+
+			try
+			{
+				replicationDegree = Integer.parseInt(args[3]);
+				
+				if (replicationDegree <= 0)
+				{
+					Logger.abort(messageInvalidDegree);
+				}
+			}
+			catch (NumberFormatException ex)
+			{
+				Logger.abort(messageInvalidDegree);
+			}		
+		}
+		else if (paramType.equals("RECLAIM") || paramType.equals("RECLAIMENH"))
+		{
+			if (args.length != 3)
+			{
+				Logger.abort(messageProgramUsage);
+			}
+
+			try
+			{
+				reclaimAmount = Integer.parseInt(args[2]);
+				
+				if (reclaimAmount <= 0)
+				{
+					Logger.abort(messageInvalidReclaim);
+				}
+			}
+			catch (NumberFormatException ex)
+			{
+				Logger.abort(messageInvalidReclaim);
+			}
+		}
+		else
+		{
+			if (args.length != 3)
+			{
+				Logger.abort(messageProgramUsage);
+			}
+		}
+		
+		String firstOperand = args[2];
 		InetAddress rmiAddress = null;
+		Registry registry = null;
+		TestStub stub = null;
 
 		if (separatorPosition == -1 || separatorPosition == 0)
 		{
@@ -54,7 +116,7 @@ public class TestApp
 			{
 				rmiAddress = InetAddress.getLocalHost();
 			}
-			catch (UnknownHostException e)
+			catch (UnknownHostException ex)
 			{
 				Logger.abort("could not connect to localhost!");
 			}
@@ -73,45 +135,12 @@ public class TestApp
 			}
 		}
 
-		final String rmiObject = rmiServer.substring(separatorPosition + 1);
-		final String paramType = args[1];
-		
-		if (!checkCommand(paramType))
-		{
-			Logger.abort("user has entered an invalid request!");
-		}
-
-		if (paramType.equals("BACKUP") || paramType.equals("BACKUPENH"))
-		{
-			if (args.length != 4)
-			{
-				Logger.abort("could not parse replication degree!");
-			}
-
-			try
-			{
-				replicationDegree = Integer.parseInt(args[3]);
-			}
-			catch (NumberFormatException ex)
-			{
-				Logger.abort(ex.getMessage());
-			}
-
-			if (replicationDegree <= 0)
-			{
-				Logger.abort("invalid replication degree, value must be greater than zero!");
-			}
-		}
-
-		Registry registry = null;
-		TestStub stub = null;
-
 		try
 		{
 			registry = LocateRegistry.getRegistry(rmiAddress.getHostAddress());
-			Logger.logDebug("establishing connection with remote object \"" + rmiObject + "\"...");
+			Logger.logInformation("establishing connection with remote object \"" + rmiObject + "\"...");
 			stub = (TestStub) registry.lookup(rmiObject);
-			Logger.logDebug("connected to initiator peer, sending user request...");
+			Logger.logInformation("connected to initiator peer, sending user request...");
 		}
 		catch (NotBoundException ex)
 		{
@@ -126,42 +155,42 @@ public class TestApp
 		{
 			boolean remoteResult = false;
 			
-			Logger.logDebug("message sent, waiting for peer response...");
+			Logger.logInformation("message sent, waiting for peer response...");
 			
 			if (paramType.equals("BACKUP"))
 			{
-				remoteResult = stub.backupFile(fileId, replicationDegree);
+				remoteResult = stub.backupFile(firstOperand, replicationDegree, false);
 			}
 			else if (paramType.equals("BACKUPENH"))
 			{
-				remoteResult = stub.backupEnhanced(fileId, replicationDegree);
+				remoteResult = stub.backupFile(firstOperand, replicationDegree, true);
 			}
 			else if (paramType.equals("DELETE"))
 			{
-				remoteResult = stub.deleteFile(fileId);
+				remoteResult = stub.deleteFile(firstOperand, false);
 			}
 			else if (paramType.equals("DELETEENH"))
 			{
-				remoteResult = stub.deleteEnhanced(fileId);
+				remoteResult = stub.deleteFile(firstOperand, true);
 			}
 			else if (paramType.equals("RESTORE"))
 			{
-				remoteResult = stub.restoreFile(fileId);
+				remoteResult = stub.restoreFile(firstOperand, false);
 			}
 			else if (paramType.equals("RESTOREENH"))
 			{
-				remoteResult = stub.restoreEnhanced(fileId);
+				remoteResult = stub.restoreFile(firstOperand, true);
 			}
 			else if (paramType.equals("RECLAIM"))
 			{
-				remoteResult = stub.reclaimSpace();
+				remoteResult = stub.reclaimSpace(reclaimAmount, false);
 			}
 			else if (paramType.equals("RECLAIMENH"))
 			{
-				remoteResult = stub.reclaimEnhanced();
+				remoteResult = stub.reclaimSpace(reclaimAmount, true);
 			}
 					
-			Logger.logDebug("command returned \"" + remoteResult + "\"");
+			Logger.logInformation("command returned \"" + remoteResult + "\"");
 		}
 		catch (RemoteException ex)
 		{

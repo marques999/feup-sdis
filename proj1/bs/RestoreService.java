@@ -1,5 +1,6 @@
 package bs;
 
+import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Stack;
@@ -29,7 +30,7 @@ public class RestoreService extends BaseService
 	 * mutex for dealing with concurrent accesses to the received messages hashmap
 	 */
 	private final Object m_receivedLock = new Object();
-	
+
 	/**
 	 * @brief default constructor for 'RestoreService' class
 	 * @param paramAddress address of the multicast restore channel
@@ -46,7 +47,7 @@ public class RestoreService extends BaseService
 	 * @param hasPayload 'true' if this message should contain binary data attached
 	 */
 	@Override
-	protected void processMessage(final GenericMessage paramMessage, boolean hasPayload)
+	protected void processMessage(final GenericMessage paramMessage, final DatagramPacket paramPacket, boolean hasPayload)
 	{
 		if (paramMessage.getType().equals("CHUNK"))
 		{
@@ -96,11 +97,8 @@ public class RestoreService extends BaseService
 		int generatedHash = calculateHash(fileId, chunkId);
 
 		synchronized (m_receivedLock)
-		{
-			if (!m_received.containsKey(generatedHash))
-			{
-				m_received.put(generatedHash, false);
-			}	
+		{	
+			m_received.put(generatedHash, false);
 		}
 	}
 
@@ -112,13 +110,10 @@ public class RestoreService extends BaseService
 	public final void registerMessage(final String fileId, int chunkId)
 	{
 		int generatedHash = calculateHash(fileId, chunkId);
-
+		
 		synchronized (m_receivedLock)
 		{
-			if (m_received.containsKey(generatedHash))
-			{
-				m_received.put(generatedHash, true);
-			}
+			m_received.put(generatedHash, true);
 		}
 	}
 
@@ -172,6 +167,22 @@ public class RestoreService extends BaseService
 				m_collection.get(fileId).push(paramChunk);
 				m_collectionLock.notifyAll();
 			}
+		}
+	}
+	
+	public final boolean hasChunk(final Chunk paramChunk)
+	{
+		final String fileId = paramChunk.getFileId();
+	
+		synchronized (m_collectionLock)
+		{
+			if (!m_collection.containsKey(fileId))
+			{
+				return false;
+			}
+
+			final Stack<Chunk> chunkStack = m_collection.get(fileId);
+			return !chunkStack.isEmpty() && chunkStack.contains(paramChunk);
 		}
 	}
 

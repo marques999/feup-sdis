@@ -16,32 +16,13 @@ public class ChunkRestore
 	}
 
 	private int m_count;
-
-	public int getCount()
-	{
-		return m_count;
-	}
-
 	private long m_fileSize;
 
 	public final boolean put(final Chunk paramChunk)
 	{
-		// ------------------------------------
-		// VERIFICA SE CHUNK RECEBIDO É VÁLIDO
-		// ------------------------------------
-
 		int chunkId = paramChunk.getChunkId();
 
-		if (chunkId < 0 || !paramChunk.getFileId().equals(m_fileId))
-		{
-			return false;
-		}
-
-		// ------------------------------------------
-		// VERIFICA SE EXISTEM CHUNKS REPETIDOS
-		// ------------------------------------------
-
-		if (m_chunksmap.containsKey(chunkId))
+		if (m_chunksmap.containsKey(chunkId) || !paramChunk.getFileId().equals(m_fileId))
 		{
 			return false;
 		}
@@ -53,22 +34,12 @@ public class ChunkRestore
 
 	public byte[] join() throws MissingChunkException, BadChunkException
 	{
-		int lastChunkId = m_count - 1;
-
-		// --------------------------------------------
-		// VERIFICAR SE OS CHUNKS FORAM TODOS RECEBIDOS
-		// --------------------------------------------
-
-		final Chunk lastChunk = m_chunksmap.get(lastChunkId);
+		final Chunk lastChunk = m_chunksmap.get(m_count - 1);
 
 		if (lastChunk == null || !lastChunk.isLast())
 		{
 			throw new MissingChunkException(m_fileId);
 		}
-
-		// -------------------------------------------------
-		// ORDENA CHUNKS POR ID, CALCULANDO TAMANHO
-		// -------------------------------------------------
 
 		final Chunk[] fileChunks = new Chunk[m_count];
 
@@ -81,7 +52,7 @@ public class ChunkRestore
 
 			final Chunk currentChunk = m_chunksmap.get(chunkId);
 
-			if (currentChunk.isLast() && chunkId != lastChunkId)
+			if (currentChunk.isLast() && chunkId != (m_count - 1))
 			{
 				throw new BadChunkException(currentChunk);
 			}
@@ -89,29 +60,19 @@ public class ChunkRestore
 			fileChunks[chunkId] = currentChunk;
 		}
 
-		// --------------------------------------------------
-		// CONCATENA OS BYTES DOS CHUNKS RECEBIDOS NUM ARRRAY
-		// --------------------------------------------------
-
 		byte[] m_buffer = new byte[(int) m_fileSize];
 		int bytesWritten = 0;
 
 		for (int id = 0; id < m_count; id++)
 		{
-
 			int bytesToWrite = (int) fileChunks[id].getLength();
 
 			if (bytesToWrite > 0)
 			{
-				System.arraycopy(fileChunks[id].getData(), 0, m_buffer,
-						bytesWritten, bytesToWrite);
+				System.arraycopy(fileChunks[id].getData(), 0, m_buffer, bytesWritten, bytesToWrite);
 				bytesWritten += bytesToWrite;
 			}
 		}
-
-		// --------------------------------------------------------
-		// VERIFICAR TAMANHO DO BUFFER APÓS CONCATENAÇÃO DOS CHUNKS
-		// --------------------------------------------------------
 
 		if (bytesWritten != m_fileSize)
 		{

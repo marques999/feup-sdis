@@ -19,8 +19,11 @@ import bs.test.TestStub;
 
 public class InitiatorPeer implements TestStub
 {
-	private final static String messageConnected = "connected to initiator service, listening for commands!";
-	private final static String messageRemoteException = "could not bind object, is rmiregistry running?";
+	private static final String messageConnecting = "connecting to rmiregistry server...";
+	private static final String messageConnected = "connected to initiator service, listening for commands!";
+	private static final String messageObjectExists = "remote object already exists, rebinding...";
+	private static final String messageProgramUsage = "BackupSystem <Host> <PeerId> [<McPort> <MdbPort> <MdrPort>]";
+	private static final String messageRemoteException = "could not bind object, is rmiregistry running?";
 	private static final String messageBackupDone = "backup action sucessfully completed!";
 	private static final String messageRestoreDone = "restore action sucessfully completed!";
 	private static final String messageDeleteDone = "file successfully deleted from the network!";
@@ -30,18 +33,24 @@ public class InitiatorPeer implements TestStub
 	{
 		if (!BackupGlobals.checkInitiatorArguments(args.length))
 		{
-			System.out.println("usage: BackupSystem <Host> <PeerId> [<McPort> <MdbPort> <MdrPort>]");
-			System.exit(1);
+			Logger.abort(messageProgramUsage);
 		}
 		
-		BackupSystem.initializePeer(Arrays.copyOfRange(args, 1, args.length));
-		String objectName = "initiator";
+		String objectName = "1234";
 		Registry registry = null;
-		TestStub stub = null;;
+		TestStub stub = null;
 
 		if (args.length > BackupGlobals.minimumInitArguments)
 		{
-			objectName = args[0];
+			try
+			{
+				Integer.parseInt(args[0]);
+				objectName = args[0];
+			}
+			catch (NumberFormatException ex)
+			{
+				
+			}
 		}
 
 		try
@@ -49,7 +58,7 @@ public class InitiatorPeer implements TestStub
 			Logger.logDebug("remote object name -> \"" + objectName + "\"");
 			registry = LocateRegistry.getRegistry();
 			stub = (TestStub) UnicastRemoteObject.exportObject(new InitiatorPeer(), 0);
-			Logger.logDebug("connecting to rmiregistry server...");
+			Logger.logDebug(messageConnecting);
 			registry.bind(objectName, stub);
 			Logger.logError(messageConnected);
 		}
@@ -57,7 +66,7 @@ public class InitiatorPeer implements TestStub
 		{
 			try
 			{
-				Logger.logDebug("remote object already exists, rebinding...");
+				Logger.logDebug(messageObjectExists);
 				registry.rebind(objectName, stub);
 				Logger.logDebug(String.format(messageConnected, objectName));
 			}
@@ -70,11 +79,15 @@ public class InitiatorPeer implements TestStub
 		{
 			Logger.abort(messageRemoteException);
 		}
+
+		BackupSystem.initializePeer(Arrays.copyOfRange(args, 1, args.length));
 	}
-	
+
 	@Override
-	public boolean backupFile(final String fileId, int replicationDegree) throws RemoteException
+	public boolean backupFile(final String fileId, int replicationDegree, boolean enableEnhancements) throws RemoteException
 	{
+		BackupSystem.setEnhancements(enableEnhancements);
+
 		final ActionBackup actionBackup = new ActionBackup(fileId, replicationDegree);
 		
 		actionBackup.start();
@@ -99,8 +112,10 @@ public class InitiatorPeer implements TestStub
 	}
 
 	@Override
-	public boolean restoreFile(final String fileId) throws RemoteException
+	public boolean restoreFile(final String fileId, boolean enableEnhancements) throws RemoteException
 	{
+		BackupSystem.setEnhancements(enableEnhancements);
+
 		final ActionRestore actionRestore = new ActionRestore(fileId);
 		
 		actionRestore.start();
@@ -123,10 +138,12 @@ public class InitiatorPeer implements TestStub
 
 		return threadResult;
 	}
-	
-	@Override
-	public boolean deleteFile(String fileId) throws RemoteException
+
+	@Override	
+	public boolean deleteFile(String fileId, boolean enableEnhancements) throws RemoteException
 	{
+		BackupSystem.setEnhancements(enableEnhancements);
+
 		final ActionDelete actionDelete = new ActionDelete(fileId);
 		
 		actionDelete.start();
@@ -149,11 +166,13 @@ public class InitiatorPeer implements TestStub
 		
 		return threadResult;
 	}
-	
+
 	@Override
-	public boolean reclaimSpace() throws RemoteException
+	public boolean reclaimSpace(int reclaimAmount, boolean enableEnhancements) throws RemoteException
 	{
-		final ActionReclaim actionReclaim = new ActionReclaim(2048000);
+		BackupSystem.setEnhancements(enableEnhancements);
+
+		final ActionReclaim actionReclaim = new ActionReclaim(reclaimAmount);
 		
 		actionReclaim.start();
 		
@@ -174,29 +193,5 @@ public class InitiatorPeer implements TestStub
 		}
 		
 		return threadResult;
-	}
-	
-	@Override
-	public boolean backupEnhanced(String fileId, int replicationDegree) throws RemoteException
-	{
-		return false;
-	}
-	
-	@Override
-	public boolean restoreEnhanced(String fileId) throws RemoteException
-	{
-		return false;
-	}
-	
-	@Override
-	public boolean deleteEnhanced(String fileId) throws RemoteException
-	{
-		return false;
-	}
-	
-	@Override
-	public boolean reclaimEnhanced() throws RemoteException
-	{
-		return false;
 	}
 }

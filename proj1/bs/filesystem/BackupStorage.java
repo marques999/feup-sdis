@@ -6,7 +6,6 @@ import java.util.HashMap;
 
 import bs.BackupSystem;
 import bs.logging.Logger;
-import bs.misc.Pair;
 
 public class BackupStorage implements Serializable
 {
@@ -44,37 +43,47 @@ public class BackupStorage implements Serializable
 	
 	private HashMap<String, FileInformation> remoteFiles;
 	
-	public final void registerRestore(final ChunkBackup paramChunks)
+	public final boolean registerRestore(final ChunkBackup paramChunks)
 	{
 		Logger.logDebug("registering " + paramChunks.getFileName() + " for restore...");
-		remoteFiles.put(paramChunks.getFileName(), new FileInformation(paramChunks));
-		BackupSystem.writeStorage();
-	}
-	
-	public synchronized final void unregisterRestore(final String fileName)
-	{
-		if (remoteFiles.containsKey(fileName))
+		
+		synchronized (remoteFiles)
 		{
-			remoteFiles.remove(fileName);
-			BackupSystem.writeStorage();
-		}
-	}
-	
-	public synchronized final FileInformation getRestoreInformation(final String fileId)
-	{
-		if (remoteFiles.containsKey(fileId))
-		{
-			return remoteFiles.get(fileId);
+			remoteFiles.put(paramChunks.getFileName(), new FileInformation(paramChunks));
 		}
 		
+		BackupSystem.writeStorage();
+		
+		return true;
+	}
+	
+	public final boolean unregisterRestore(final String fileName)
+	{
+		synchronized (remoteFiles)
+		{
+			if (remoteFiles.containsKey(fileName))
+			{
+				remoteFiles.remove(fileName);
+				BackupSystem.writeStorage();
+			}
+		}
+		
+		return true;
+	}
+	
+	public final FileInformation getRestoreInformation(final String fileId)
+	{
+		synchronized (remoteFiles)
+		{
+			if (remoteFiles.containsKey(fileId))
+			{
+				return remoteFiles.get(fileId);
+			}
+		}
+
 		return null;
 	}
-	
-	public synchronized final boolean wasBackedUp(final String fileName)
-	{
-		return remoteFiles.containsKey(fileName);
-	}
-	
+
 	// -----------------------------------------------------
 	
 	private long currentSize = 0;
@@ -84,12 +93,7 @@ public class BackupStorage implements Serializable
 	{
 		diskCapacity = paramBytes;
 	}
-	
-	public long getCapacity()
-	{
-		return diskCapacity;
-	}
-	
+
 	public long getUsedSpace()
 	{
 		return currentSize;
@@ -101,33 +105,50 @@ public class BackupStorage implements Serializable
 	}
 	
 	// -----------------------------------------------------
-	
-	public synchronized final Pair<String, Integer> getMostReplicated()
+
+	private HashMap<String, ChunkCollection> localChunks;
+
+	public synchronized Chunk getMostReplicated()
 	{
-		Pair<Integer, Integer> mostReplicatedChunk = null;
+		if (localChunks.isEmpty())
+		{
+			return null;
+		}
+
+		int mostReplicatedChunk = -1;
+		int mostReplicatedDegree = Integer.MIN_VALUE;
+		
 		String mostReplicatedFile = null;
 
 		for (final String fileId : localChunks.keySet())
 		{
-			final Pair<Integer, Integer> currentFile = localChunks.get(fileId).findMostReplicated();
+			final HashMap<Integer, ChunkInformation> currentFile = localChunks.get(fileId).getChunks();
 
-			if (currentFile.second() > mostReplicatedChunk.second())
+			for (int chunkId : currentFile.keySet())
 			{
-				mostReplicatedChunk = currentFile;
-				mostReplicatedFile = fileId;
+				final ChunkInformation currentChunk = currentFile.get(chunkId);
+				int currentDegree = currentChunk.getCount() - currentChunk.getReplicationDegree();
+				
+				if (currentDegree > mostReplicatedDegree)
+				{
+					mostReplicatedFile = fileId;
+					mostReplicatedChunk = chunkId;
+					mostReplicatedDegree = currentDegree;
+				}
 			}
 		}
+		
+		if (mostReplicatedFile == null || mostReplicatedChunk < 0)
+		{
+			return null;
+		}
 
-		return new Pair<String, Integer>(mostReplicatedFile, mostReplicatedChunk.first());
+		return BackupSystem.getFiles().readChunk(mostReplicatedFile, mostReplicatedChunk);
 	}
-
-	//-----------------------------------------------------
-
-	private HashMap<String, ChunkCollection> localChunks;
 
 	public synchronized void registerPeer(final String fileId, int chunkId, int peerId)
 	{
-		if (!localChunks.containsKey(fileId))
+		if (localChunks.containsKey(fileId))
 		{
 			Logger.logDebug("adding peerId=" + peerId + " to mirrors list...");
 			localChunks.get(fileId).registerPeer(chunkId, peerId);
@@ -169,46 +190,47 @@ public class BackupStorage implements Serializable
 	}
 	
 	// -----------------------------------------------------
-	
-	public synchronized ChunkInformation getChunk(final String fileId, int chunkId)
-	{
-		if (localChunks.containsKey(fileId))
-		{
-			return (localChunks.get(fileId).getChunkInformation(chunkId));
-		}
 
-		return null;
-	}
-	
-	public synchronized boolean putChunk(final Chunk paramChunk)
+	private synchronized boolean registerChunk(final Chunk paramChunk, boolean localChunk)
 	{
 		final String fileId = paramChunk.getFileId();
 
-		if (localChunks.containsKey(fileId))
+		if (!localChunks.containsKey(fileId))
 		{
-			if (localChunks.get(fileId).placeChunk(paramChunk))
+			localChunks.put(fileId, new ChunkCollection());
+		}
+		
+		long deltaBytes = localChunks.get(fileId).placeChunk(paramChunk, localChunk);
+		
+		if (deltaBytes >= 0)
+		{		
+			Logger.logDebug("inserting chunk with id=" + paramChunk.getChunkId() + " into database...");
+			
+			if (localChunk)
 			{
-				Logger.logDebug("inserting chunk with id=" + paramChunk.getChunkId() + " into database...");
-				currentSize += paramChunk.getLength();
-				BackupSystem.writeStorage();
+				currentSize += deltaBytes;
 			}
-			else
-			{
-				System.out.println("BackupStorage::chunk exists!");
-			}
+			
+			BackupSystem.writeStorage();
 		}
 		else
 		{
-			localChunks.put(fileId, new ChunkCollection());
-			localChunks.get(fileId).placeChunk(paramChunk);
-			currentSize += paramChunk.getLength();
-			Logger.logDebug("inserting chunk with id=" + paramChunk.getChunkId() + " into database...");
-			BackupSystem.writeStorage();
+			Logger.logWarning("chunk with id=" + paramChunk.getChunkId() + " already exists!");
 		}
 		
 		return true;
 	}
-
+	
+	public synchronized boolean registerLocalChunk(final Chunk paramChunk)
+	{
+		return registerChunk(paramChunk, true);
+	}
+	
+	public synchronized boolean registerTemporaryChunk(final Chunk paramChunk)
+	{
+		return registerChunk(paramChunk, false);
+	}
+	
 	public synchronized void removeChunk(final String fileId, int chunkId)
 	{
 		if (localChunks.containsKey(fileId))
@@ -218,39 +240,44 @@ public class BackupStorage implements Serializable
 		}
 	}
 	
-	public synchronized boolean hasLocalChunks(final String fileId)
+	public synchronized boolean hasLocalChunk(final String fileId, int chunkId)
 	{
-		return localChunks.containsKey(fileId);
-	}
-	
-	public synchronized boolean hasChunk(final String fileId, int chunkId)
-	{
-		return localChunks.containsKey(fileId) && localChunks.get(fileId).chunkExists(chunkId);
+		if (localChunks.containsKey(fileId))
+		{
+			return localChunks.get(fileId).localChunkExists(chunkId);
+		}
+		
+		return false;
 	}
 		
 	// -----------------------------------------------------
 	
 	public synchronized boolean removeFile(final String fileId)
-	{
-		final FileManager fmInstance = BackupSystem.getFiles();
-		
+	{	
 		if (!localChunks.containsKey(fileId))
 		{
 			return false;
 		}
 		
-		Integer[] chunkIds = localChunks.get(fileId).getChunkIds();
-		
-		for (int i = 0; i < chunkIds.length; i++)
+		final FileManager fmInstance = BackupSystem.getFiles();
+		final ChunkCollection chunkCollection = localChunks.get(fileId);
+		final Integer[] chunkIds = chunkCollection.getChunkIds();
+
+		for (int i = 0 ; i < chunkIds.length; i++)
 		{
 			if (fmInstance.deleteChunk(fileId, chunkIds[i]))
 			{
-				removeChunk(fileId, chunkIds[i]);
+				currentSize -= chunkCollection.removeChunk(chunkIds[i]);		
 			}
 			else
 			{
-				Logger.logError("file system error while deleting chunkId=" + i + "!");
+				Logger.logError("file system error while deleting chunkId=" + chunkIds[i] + "!");
 			}
+		}
+		
+		if (chunkCollection.isEmpty())
+		{
+			localChunks.remove(fileId);
 		}
 		
 		BackupSystem.writeStorage();
