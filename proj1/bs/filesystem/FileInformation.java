@@ -41,7 +41,7 @@ public class FileInformation implements Serializable
 		return m_chunks;
 	}
 
-	// -----------------------------------------------------
+	//-----------------------------------------------------
 
 	private final long m_fileSize;
 

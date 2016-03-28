@@ -24,7 +24,7 @@ public class ActionDelete extends Action
 			if (fmInstance.deleteFile(m_fileName))
 			{
 				Logger.logDebug("deleted " + m_fileName + " from files/ directory...");
-				
+
 				if (restoreInformation == null)
 				{
 					Logger.logDebug("peers in this network have not backed up this file.");
@@ -32,11 +32,11 @@ public class ActionDelete extends Action
 				else
 				{
 					Logger.logDebug("file was previously backed up by some peers in this network.");
-						
+
 					for (int i = 0; i < BackupGlobals.maximumAttempts; i++)
 					{
 						BackupSystem.sendDELETE(restoreInformation.getFileId());
-						
+
 						try
 						{
 							Thread.sleep(BackupGlobals.maximumBackoffTime);

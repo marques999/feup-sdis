@@ -9,6 +9,8 @@ import bs.logging.ProgramException;
 
 public class ActionRestore extends Action
 {
+	private static final String messageWriteFailed = "could not write received chunks to output file!";
+	private static final String messageFileNotFound = "requested file was not found in the network, cannot restore!";
 	private final String m_fileName;
 
 	public ActionRestore(final String fileName)
@@ -28,7 +30,7 @@ public class ActionRestore extends Action
 			int numberChunks = restoreInformation.getCount();
 			final ChunkRestore recoveredChunks = new ChunkRestore(restoreInformation);
 			final String fileId = restoreInformation.getFileId();
-		
+
 			restoreService.startReceivingChunks(fileId);
 
 			for (int i = 0; i < numberChunks; i++)
@@ -46,7 +48,7 @@ public class ActionRestore extends Action
 			}
 
 			while (currentChunk != numberChunks)
-			{		
+			{
 				if (recoveredChunks.put(restoreService.retrieveChunk(fileId, currentChunk)))
 				{
 					currentChunk++;
@@ -61,7 +63,7 @@ public class ActionRestore extends Action
 
 				if (!actionResult)
 				{
-					Logger.logError("could not write chunks to output file!");
+					Logger.logError(messageWriteFailed);
 				}
 			}
 			catch (ProgramException ex)
@@ -72,7 +74,7 @@ public class ActionRestore extends Action
 		}
 		else
 		{
-			Logger.logError("requested file was not found in the network, cannot restore!");
+			Logger.logError(messageFileNotFound);
 		}
 	}
 }

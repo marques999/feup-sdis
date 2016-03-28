@@ -16,7 +16,7 @@ public class FileManager
 	private final String LocalDirectory;
 	private final String ChunksDirectory;
 	private final String RestoreDirectory;
-	
+
 	public FileManager(int peerId)
 	{
 		LocalDirectory = "files/";
@@ -43,24 +43,24 @@ public class FileManager
 	private final boolean createDirectory(final String paramDirectory)
 	{
 		final File file = new File(paramDirectory);
-		
+
 		if (!file.exists() || !file.isDirectory())
 		{
 			return file.mkdir();
 		}
-		
+
 		return true;
 	}
 
 	public final boolean writeFile(final String paramFile, byte[] paramBuffer)
 	{
 		boolean returnValue = true;
-	
+
 		if (!createDirectory(RestoreDirectory))
 		{
 			return false;
 		}
-		
+
 		try (final FileOutputStream out = new FileOutputStream(RestoreDirectory + paramFile))
 		{
 			out.write(paramBuffer);
@@ -78,23 +78,23 @@ public class FileManager
 	{
 		return new File(LocalDirectory + fileId).delete();
 	}
-	
+
 	private final String generateFilename(final String fileId, int chunkId)
 	{
 		return ChunksDirectory + fileId + "$" + chunkId + ".chunk";
 	}
-		
+
 	public final boolean deleteChunk(final String fileId, int chunkId)
 	{
 		final File file = new File(generateFilename(fileId, chunkId));
-		
+
 		Logger.logDebug("deleting " + file.getName() + "...");
 
 		if (file.exists())
 		{
 			return file.delete();
 		}
-		
+
 		return false;
 	}
 
@@ -106,7 +106,7 @@ public class FileManager
 		}
 
 		final String chunkFilename = generateFilename(paramChunk.getFileId(), paramChunk.getChunkId());
-	
+
 		try (final ObjectOutputStream objectOutputStream = new ObjectOutputStream(new FileOutputStream(chunkFilename)))
 		{
 			objectOutputStream.writeObject(paramChunk);
@@ -122,7 +122,7 @@ public class FileManager
 	public final Chunk readChunk(final String fileId, int chunkId)
 	{
 		final String chunkFilename = generateFilename(fileId, chunkId);
-		
+
 		try (final ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream(chunkFilename)))
 		{
 			return (Chunk) objectInputStream.readObject();

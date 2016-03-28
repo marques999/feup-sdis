@@ -13,14 +13,15 @@ import bs.logging.Logger;
 public class TestApp
 {
 	private static final String messageProgramUsage = "TestApp <[host:]rmi_object> <sub_protocol> <opnd_1> [<opnd_2>]";
+	private static final String messageInvalidRemote = "invalid remote object name, value must be greater than zero!";
 	private final static String messageInvalidDegree = "invalid replication degree, value must be greater than zero!";
 	private final static String messageInvalidReclaim = "invalid reclaim amount, value must be greater than zero!";
 
 	private static String[] validCommands = {
-		"BACKUP", "BACKUPENH", "RESTORE", "RESTORENH",
+		"BACKUP", "BACKUPENH", "RESTORE", "RESTOREENH",
 		"DELETE", "DELETEENH", "RECLAIM", "RECLAIMENH"
 	};
-	
+
 	public static boolean checkCommand(final String paramType)
 	{
 		for (int i = 0; i < validCommands.length; i++)
@@ -30,7 +31,7 @@ public class TestApp
 				return true;
 			}
 		}
-		
+
 		return false;
 	}
 
@@ -42,20 +43,29 @@ public class TestApp
 		}
 
 		final String rmiServer = args[0];
-		final String paramType = args[1];	
-		
-		int separatorPosition = rmiServer.indexOf(':');
-		int reclaimAmount = 0;
-		int replicationDegree = 0;
+		final String paramType = args[1];
 
-		final String rmiObject = rmiServer.substring(separatorPosition + 1);
-		
 		if (!checkCommand(paramType))
 		{
 			Logger.abort("command type (BACKUP|RESTORE|DELETE|RECLAIM) not recognized!");
 		}
 
-		if (paramType.equals("BACKUP") || paramType.equals("BACKUPENH"))
+		int separatorPosition = rmiServer.indexOf(':');
+		int reclaimAmount = 0;
+		int replicationDegree = 0;
+
+		final String rmiObject = rmiServer.substring(separatorPosition + 1);
+
+		try
+		{
+			Integer.parseInt(rmiObject);
+		}
+		catch (NumberFormatException ex)
+		{
+			Logger.abort(messageInvalidRemote);
+		}
+
+		if (paramType.startsWith("BACKUP"))
 		{
 			if (args.length != 4)
 			{
@@ -65,7 +75,7 @@ public class TestApp
 			try
 			{
 				replicationDegree = Integer.parseInt(args[3]);
-				
+
 				if (replicationDegree <= 0)
 				{
 					Logger.abort(messageInvalidDegree);
@@ -74,9 +84,9 @@ public class TestApp
 			catch (NumberFormatException ex)
 			{
 				Logger.abort(messageInvalidDegree);
-			}		
+			}	
 		}
-		else if (paramType.equals("RECLAIM") || paramType.equals("RECLAIMENH"))
+		else if (paramType.startsWith("RECLAIM"))
 		{
 			if (args.length != 3)
 			{
@@ -86,7 +96,7 @@ public class TestApp
 			try
 			{
 				reclaimAmount = Integer.parseInt(args[2]);
-				
+
 				if (reclaimAmount <= 0)
 				{
 					Logger.abort(messageInvalidReclaim);
@@ -104,7 +114,7 @@ public class TestApp
 				Logger.abort(messageProgramUsage);
 			}
 		}
-		
+
 		String firstOperand = args[2];
 		InetAddress rmiAddress = null;
 		Registry registry = null;
@@ -154,42 +164,27 @@ public class TestApp
 		try
 		{
 			boolean remoteResult = false;
-			
+			boolean enhancedCommand = paramType.endsWith("ENH");
+
 			Logger.logInformation("message sent, waiting for peer response...");
-			
-			if (paramType.equals("BACKUP"))
+
+			if (paramType.startsWith("BACKUP"))
 			{
-				remoteResult = stub.backupFile(firstOperand, replicationDegree, false);
+				remoteResult = stub.backupFile(firstOperand, replicationDegree, enhancedCommand);
 			}
-			else if (paramType.equals("BACKUPENH"))
+			else if (paramType.startsWith("DELETE"))
 			{
-				remoteResult = stub.backupFile(firstOperand, replicationDegree, true);
+				remoteResult = stub.deleteFile(firstOperand, enhancedCommand);
 			}
-			else if (paramType.equals("DELETE"))
+			else if (paramType.startsWith("RESTORE"))
 			{
-				remoteResult = stub.deleteFile(firstOperand, false);
+				remoteResult = stub.restoreFile(firstOperand, enhancedCommand);
 			}
-			else if (paramType.equals("DELETEENH"))
+			else if (paramType.startsWith("RECLAIM"))
 			{
-				remoteResult = stub.deleteFile(firstOperand, true);
+				remoteResult = stub.reclaimSpace(reclaimAmount, enhancedCommand);
 			}
-			else if (paramType.equals("RESTORE"))
-			{
-				remoteResult = stub.restoreFile(firstOperand, false);
-			}
-			else if (paramType.equals("RESTOREENH"))
-			{
-				remoteResult = stub.restoreFile(firstOperand, true);
-			}
-			else if (paramType.equals("RECLAIM"))
-			{
-				remoteResult = stub.reclaimSpace(reclaimAmount, false);
-			}
-			else if (paramType.equals("RECLAIMENH"))
-			{
-				remoteResult = stub.reclaimSpace(reclaimAmount, true);
-			}
-					
+
 			Logger.logInformation("command returned \"" + remoteResult + "\"");
 		}
 		catch (RemoteException ex)

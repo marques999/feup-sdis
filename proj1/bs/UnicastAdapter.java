@@ -20,7 +20,7 @@ public class UnicastAdapter extends Thread
 
 		try
 		{
-			m_socket = new DatagramSocket(m_hostPort);		
+			m_socket = new DatagramSocket(m_hostPort);
 			m_available = true;
 		}
 		catch (IOException ex)
@@ -43,7 +43,7 @@ public class UnicastAdapter extends Thread
 		{
 			return false;
 		}
-		
+
 		synchronized (m_mutex)
 		{
 			try
@@ -55,10 +55,10 @@ public class UnicastAdapter extends Thread
 				return false;
 			}
 		}
-	
+
 		return true;
 	}
-	
+
 	@Override
 	public void run()
 	{
@@ -67,10 +67,10 @@ public class UnicastAdapter extends Thread
 		while (m_available)
 		{
 			final DatagramPacket packet = new DatagramPacket(buf, buf.length);
-			
+
 			try
-			{		
-				m_socket.receive(packet);		
+			{
+				m_socket.receive(packet);
 				m_service.umarshallMessage(packet);
 			}
 			catch (IOException ex)

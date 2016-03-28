@@ -38,7 +38,7 @@ public abstract class BaseService extends Thread
 	{
 		return paramHeader.trim().split(" ");
 	}
-	
+
 	public final MulticastConnection getConnection()
 	{
 		return m_connection;
@@ -50,7 +50,7 @@ public abstract class BaseService extends Thread
 		{
 			return false;
 		}
-		
+
 		final String messageType = messageHeader[Message.Type];
 		return messageType.equals("CHUNK") || messageType.equals("PUTCHUNK");
 	}
@@ -59,25 +59,25 @@ public abstract class BaseService extends Thread
 	{
 		return messageHeader.length > 2 && Integer.parseInt(messageHeader[Message.SenderId]) != BackupSystem.getPeerId();
 	}
-	
+
 	protected abstract void processMessage(final GenericMessage paramMessage, final DatagramPacket paramPacket, boolean hasPayload);
-	
+
 	protected final void umarshallMessage(final DatagramPacket paramPacket)
 	{
 		final String convertedMessage = new String(paramPacket.getData(), paramPacket.getOffset(), paramPacket.getLength());
-		
+
 		int payloadSeparatorStart = convertedMessage.indexOf("\r\n\r\n");
 		int payloadSeparatorEnd = payloadSeparatorStart + "\r\n\r\n".length();
 		int payloadLength = paramPacket.getLength();
 		byte[] messageBody = null;
-		
+
 		final String[] messageHeader = processHeader(convertedMessage.substring(0, payloadSeparatorStart));
-		
+
 		if (checkPeerId(messageHeader))
 		{
 			if (checkPayload(messageHeader))
-			{	
-				messageBody = Arrays.copyOfRange(paramPacket.getData(), payloadSeparatorEnd, payloadLength);		
+			{
+				messageBody = Arrays.copyOfRange(paramPacket.getData(), payloadSeparatorEnd, payloadLength);
 				processMessage(new GenericMessage(messageHeader, messageBody), paramPacket, true);
 			}
 			else
@@ -86,7 +86,7 @@ public abstract class BaseService extends Thread
 			}
 		}
 	}
-	
+
 	protected final int generateBackoff()
 	{
 		return m_random.nextInt(BackupGlobals.maximumBackoffTime);
@@ -103,7 +103,7 @@ public abstract class BaseService extends Thread
 
 		return (hash * 13) + chunkId;
 	}
-	
+
 	@Override
 	public void run()
 	{
@@ -112,9 +112,9 @@ public abstract class BaseService extends Thread
 		while (m_connection.available())
 		{
 			final DatagramPacket packet = new DatagramPacket(buf, buf.length);
-			
+
 			try
-			{			
+			{
 				m_socket.receive(packet);
 				umarshallMessage(packet);
 			}

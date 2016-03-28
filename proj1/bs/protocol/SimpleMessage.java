@@ -13,7 +13,7 @@ public abstract class SimpleMessage extends Message
 		super(paramHeader);
 		m_chunkId = Integer.parseInt(paramHeader[Message.ChunkId]);
 	}
-	
+
 	private int m_chunkId;
 
 	public int getChunkId()

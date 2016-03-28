@@ -22,20 +22,21 @@ public class InitiatorPeer implements TestStub
 	private static final String messageConnecting = "connecting to rmiregistry server...";
 	private static final String messageConnected = "connected to initiator service, listening for commands!";
 	private static final String messageObjectExists = "remote object already exists, rebinding...";
+	private static final String messageInvalidRemote = "invalid remote object name, value must be greater than zero!";
 	private static final String messageProgramUsage = "BackupSystem <Host> <PeerId> [<McPort> <MdbPort> <MdrPort>]";
 	private static final String messageRemoteException = "could not bind object, is rmiregistry running?";
 	private static final String messageBackupDone = "backup action sucessfully completed!";
 	private static final String messageRestoreDone = "restore action sucessfully completed!";
 	private static final String messageDeleteDone = "file successfully deleted from the network!";
 	private static final String messageReclaimDone = "redundant chunks successfully reclaimed!";
-	
+
 	public static void main(final String[] args) throws IOException
 	{
 		if (!BackupGlobals.checkInitiatorArguments(args.length))
 		{
 			Logger.abort(messageProgramUsage);
 		}
-		
+
 		String objectName = "1234";
 		Registry registry = null;
 		TestStub stub = null;
@@ -49,7 +50,7 @@ public class InitiatorPeer implements TestStub
 			}
 			catch (NumberFormatException ex)
 			{
-				
+				Logger.abort(messageInvalidRemote);
 			}
 		}
 
@@ -58,17 +59,17 @@ public class InitiatorPeer implements TestStub
 			Logger.logDebug("remote object name -> \"" + objectName + "\"");
 			registry = LocateRegistry.getRegistry();
 			stub = (TestStub) UnicastRemoteObject.exportObject(new InitiatorPeer(), 0);
-			Logger.logDebug(messageConnecting);
+			Logger.logInformation(messageConnecting);
 			registry.bind(objectName, stub);
-			Logger.logError(messageConnected);
+			Logger.logInformation(messageConnected);
 		}
 		catch (AlreadyBoundException ex)
 		{
 			try
 			{
-				Logger.logDebug(messageObjectExists);
+				Logger.logWarning(messageObjectExists);
 				registry.rebind(objectName, stub);
-				Logger.logDebug(String.format(messageConnected, objectName));
+				Logger.logInformation(String.format(messageConnected, objectName));
 			}
 			catch (RemoteException exr)
 			{
@@ -89,25 +90,25 @@ public class InitiatorPeer implements TestStub
 		BackupSystem.setEnhancements(enableEnhancements);
 
 		final ActionBackup actionBackup = new ActionBackup(fileId, replicationDegree);
-		
+
 		actionBackup.start();
-		
+
 		try
 		{
-			actionBackup.join();	
+			actionBackup.join();
 		}
 		catch (InterruptedException ex)
 		{
 			return false;
 		}
-		
+
 		boolean threadResult = actionBackup.getResult();
-		
+
 		if (threadResult)
 		{
-			Logger.logDebug(messageBackupDone);
+			Logger.logInformation(messageBackupDone);
 		}
-		
+
 		return threadResult;
 	}
 
@@ -117,9 +118,9 @@ public class InitiatorPeer implements TestStub
 		BackupSystem.setEnhancements(enableEnhancements);
 
 		final ActionRestore actionRestore = new ActionRestore(fileId);
-		
+
 		actionRestore.start();
-		
+
 		try
 		{
 			actionRestore.join();
@@ -128,26 +129,26 @@ public class InitiatorPeer implements TestStub
 		{
 			return false;
 		}
-		
+
 		boolean threadResult = actionRestore.getResult();
-		
+
 		if (threadResult)
 		{
-			Logger.logDebug(messageRestoreDone);
+			Logger.logInformation(messageRestoreDone);
 		}
 
 		return threadResult;
 	}
 
-	@Override	
+	@Override
 	public boolean deleteFile(String fileId, boolean enableEnhancements) throws RemoteException
 	{
 		BackupSystem.setEnhancements(enableEnhancements);
 
 		final ActionDelete actionDelete = new ActionDelete(fileId);
-		
+
 		actionDelete.start();
-		
+
 		try
 		{
 			actionDelete.join();
@@ -156,14 +157,14 @@ public class InitiatorPeer implements TestStub
 		{
 			return false;
 		}
-		
+
 		boolean threadResult = actionDelete.getResult();
-	
+
 		if (threadResult)
 		{
-			Logger.logDebug(messageDeleteDone);
+			Logger.logInformation(messageDeleteDone);
 		}
-		
+
 		return threadResult;
 	}
 
@@ -173,9 +174,9 @@ public class InitiatorPeer implements TestStub
 		BackupSystem.setEnhancements(enableEnhancements);
 
 		final ActionReclaim actionReclaim = new ActionReclaim(reclaimAmount);
-		
+
 		actionReclaim.start();
-		
+
 		try
 		{
 			actionReclaim.join();
@@ -184,14 +185,14 @@ public class InitiatorPeer implements TestStub
 		{
 			return false;
 		}
-		
+
 		boolean threadResult = actionReclaim.getResult();
-		
+
 		if (threadResult)
 		{
-			Logger.logDebug(messageReclaimDone);
+			Logger.logInformation(messageReclaimDone);
 		}
-		
+
 		return threadResult;
 	}
 }

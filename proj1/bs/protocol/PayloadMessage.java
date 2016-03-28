@@ -60,7 +60,7 @@ public abstract class PayloadMessage extends Message
 	{
 		return m_degree;
 	}
-	
+
 	public byte[] getBody()
 	{
 		return m_body;
@@ -113,7 +113,7 @@ public abstract class PayloadMessage extends Message
 
 		return (String.join(" ", m_header) + "\r\n\r\n").getBytes();
 	}
-	
+
 	@Override
 	public final byte[] getMessage()
 	{

@@ -3,42 +3,47 @@ package bs.actions;
 import bs.BackupGlobals;
 import bs.BackupSystem;
 import bs.ControlService;
+import bs.filesystem.BackupStorage;
 import bs.filesystem.Chunk;
 import bs.logging.Logger;
 
 public class BackupHelper extends Thread
 {
+	private final static String messageWaiting = "waiting for peer confirmations for chunk...";
+	private final static String msgBackupTimeout = "couldn't reach desired replication degree, trying again...";
+	private final static String msgBackupFailed = "reached maximum attempts to backup chunk with desired replication degree!";
+	private final static String msgBackupInformation = "%d peers have backed up chunk %d (desired replication degree is %d)";
 	private final Chunk myChunk;
-	private final String msgBackupTimeout = "couldn't reach desired replication degree, trying again...";
-	private final String msgBackupFailed = "reached maximum attempts to backup chunk with desired replication degree!";
-	private final String msgBackupSuccessful = "chunk with id=%d was backed up sucessfully!";
-	private final String msgBackupInformation = "%d peers have backed up chunk with id=%d (desired replication degree is %d)\n";
-
-	public BackupHelper(final Chunk paramChunk)
+	
+	public BackupHelper(final Chunk paramChunk, boolean paramMode)
 	{
 		myChunk = paramChunk;
+		reclaimMode = paramMode;
 	}
 	
+	private boolean reclaimMode;
+
 	@Override
 	public void run()
 	{
+		final ControlService controlService = BackupSystem.getControlService();
+		final BackupStorage bsdbInstance = BackupSystem.getStorage();		
+		boolean actionResult = false;
 		int currentAttempt = 0;
 		int chunkId = myChunk.getChunkId();
 		int replicationDegree = myChunk.getReplicationDegree();
 		int waitingTime = BackupGlobals.initialWaitingTime;
-		boolean m_result = false;
-		
-		ControlService controlService = BackupSystem.getControlService();
+
 		controlService.subscribeConfirmations(myChunk);
-		
-		while (!m_result)
+
+		while (!actionResult)
 		{
 			controlService.resetPeerConfirmations(myChunk);
 			BackupSystem.sendPUTCHUNK(myChunk);
 
 			try
 			{
-				Logger.logDebug("waiting for STORED confirmations...");
+				Logger.logDebug(messageWaiting);
 				Thread.sleep(waitingTime);
 			}
 			catch (InterruptedException ex)
@@ -46,9 +51,15 @@ public class BackupHelper extends Thread
 				ex.printStackTrace();
 			}
 
-			int numberConfirmations = controlService.getPeerConfirmations(myChunk);
+			if (reclaimMode)
+			{
+				BackupSystem.sendSTORED(myChunk);
+			}
 
-			System.out.print(String.format(msgBackupInformation, numberConfirmations, chunkId, replicationDegree));
+			int existingConfirmations = bsdbInstance.getPeerCount(myChunk.getFileId(), chunkId);
+			int numberConfirmations = existingConfirmations + controlService.getPeerConfirmations(myChunk);
+
+			Logger.logDebug(String.format(msgBackupInformation, numberConfirmations, chunkId, replicationDegree));
 
 			if (numberConfirmations < replicationDegree)
 			{
@@ -57,7 +68,7 @@ public class BackupHelper extends Thread
 				if (currentAttempt > BackupGlobals.maximumAttempts)
 				{
 					Logger.logError(msgBackupFailed);
-					m_result = true;
+					actionResult = true;
 				}
 				else
 				{
@@ -67,8 +78,8 @@ public class BackupHelper extends Thread
 			}
 			else
 			{
-				Logger.logDebug(String.format(msgBackupSuccessful, chunkId));
-				m_result = true;
+				Logger.logInformation("chunk " + chunkId + " was backed up sucessfully");
+				actionResult = true;
 			}
 		}
 

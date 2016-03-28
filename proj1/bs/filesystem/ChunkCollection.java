@@ -15,20 +15,20 @@ public class ChunkCollection implements Serializable
 		m_fileChunks = new HashMap<Integer, ChunkInformation>();
 		m_size = 0;
 	}
-	
+
 	// -----------------------------------------------------
-	
+
 	private long m_size;
 
 	public final long getSize()
 	{
 		return m_size;
 	}
-	
+
 	// -----------------------------------------------------
-	
+
 	private final HashMap<Integer, ChunkInformation> m_fileChunks;
-	
+
 	public final HashMap<Integer, ChunkInformation> getChunks()
 	{
 		return m_fileChunks;
@@ -38,14 +38,14 @@ public class ChunkCollection implements Serializable
 	{
 		if (m_fileChunks.isEmpty())
 		{
-			return new Integer[]{};
+			return new Integer[] {};
 		}
-		
+
 		int i = 0;
-		
+
 		final Integer[] chunkIds = new Integer[m_fileChunks.size()];
 		final Set<Integer> chunkSet = m_fileChunks.keySet();
-		
+
 		for (final Integer chunkId : chunkSet)
 		{
 			if (!m_fileChunks.get(chunkId).isRemote())
@@ -53,7 +53,7 @@ public class ChunkCollection implements Serializable
 				chunkIds[i++] = chunkId;
 			}
 		}
-		
+
 		return chunkIds;
 	}
 
@@ -61,7 +61,7 @@ public class ChunkCollection implements Serializable
 	{
 		return m_fileChunks.size();
 	}
-	
+
 	public final boolean isEmpty()
 	{
 		return m_fileChunks.isEmpty();
@@ -78,7 +78,7 @@ public class ChunkCollection implements Serializable
 
 		return null;
 	}
-	
+
 	/**
 	 * @brief removes a chunk from this collection
 	 * @param chunkId chunk identifier number
@@ -86,11 +86,11 @@ public class ChunkCollection implements Serializable
 	public final long removeChunk(int chunkId)
 	{
 		long chunkSize = 0;
-	
+
 		if (m_fileChunks.containsKey(chunkId))
 		{
 			final ChunkInformation chunkInformation = m_fileChunks.get(chunkId);
-			
+
 			if (chunkInformation.isRemote())
 			{
 				m_fileChunks.remove(chunkId);
@@ -109,26 +109,34 @@ public class ChunkCollection implements Serializable
 	 * @brief decreases the replication count of a chunk
 	 * @param chunkId chunk identifier number
 	 */
-	public final void removePeer(int chunkId, int peerId)
+	public final boolean removePeer(int chunkId, int peerId)
 	{
-		if (m_fileChunks.containsKey(chunkId))
+		if (!m_fileChunks.containsKey(chunkId))
 		{
-			m_fileChunks.get(chunkId).removePeer(peerId);
+			return false;
 		}
+		
+		m_fileChunks.get(chunkId).removePeer(peerId);
+		
+		return true;
 	}
-	
+
 	/**
 	 * @brief increases the replication count of a chunk
 	 * @param chunkId chunk identifier number
 	 */
-	public final void registerPeer(int chunkId, int peerId)
+	public final boolean registerPeer(int chunkId, int peerId)
 	{
-		if (m_fileChunks.containsKey(chunkId))
+		if (!m_fileChunks.containsKey(chunkId))
 		{
-			m_fileChunks.get(chunkId).registerPeer(peerId);
+			return false;
 		}
+		
+		m_fileChunks.get(chunkId).registerPeer(peerId);
+		
+		return true;
 	}
-	
+
 	/**
 	 * @brief checks if a given chunk exists
 	 * @param chunkId chunk identifier number
@@ -137,7 +145,7 @@ public class ChunkCollection implements Serializable
 	{
 		return m_fileChunks.containsKey(chunkId) && !m_fileChunks.get(chunkId).isRemote();
 	}
-	
+
 	/**
 	 * @brief inserts a given chunk into this collection
 	 * @param chunkId chunk identifier number
@@ -150,7 +158,7 @@ public class ChunkCollection implements Serializable
 		if (m_fileChunks.containsKey(chunkId))
 		{
 			final ChunkInformation chunkInformation = m_fileChunks.get(chunkId);
-		
+
 			if (chunkInformation.isRemote() && localChunk)
 			{
 				chunkInformation.setLocal();
@@ -164,9 +172,9 @@ public class ChunkCollection implements Serializable
 			}
 		}
 		else
-		{	
+		{
 			m_fileChunks.put(chunkId, new ChunkInformation(chunk, localChunk));
-					
+
 			if (localChunk)
 			{
 				deltaSpace = chunk.getLength();
@@ -179,19 +187,19 @@ public class ChunkCollection implements Serializable
 	}
 
 	public final String toString(final String fileId)
-	{	
+	{
 		final StringBuilder sb = new StringBuilder();
-		
+
 		sb.append("+------------------------------------------------------------------+\n| ");
 		sb.append(fileId);
 		sb.append(" |\n+----------+------------------+------------------------------------+\n");
 		sb.append("| ChunkId  | Length           | Degree  |\n");
-		sb.append("+----------+------------------+---------+\n");	
+		sb.append("+----------+------------------+---------+\n");
 		m_fileChunks.forEach((chunkId, chunkInformation) -> {
 			sb.append(chunkInformation.toString(chunkId));
-		});	
+		});
 		sb.append("+----------+------------------+---------+\n");
-		
+
 		return sb.toString();
 	}
 }

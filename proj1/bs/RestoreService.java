@@ -15,17 +15,17 @@ public class RestoreService extends BaseService
 	 * stores binary chunks for the files being restored, key = fileId
 	 */
 	private final HashMap<String, Stack<Chunk>> m_collection = new HashMap<>();
-	
+
 	/**
 	 * mutex for dealing with concurrent accesses to the chunk collection hashmap
 	 */
 	private final Object m_collectionLock = new Object();
-	
+
 	/**
 	 * stores received CHUNK messages from other peers, key = (fileId, chunkId)
 	 */
 	private final HashMap<Integer, Boolean> m_received = new HashMap<>();
-	
+
 	/**
 	 * mutex for dealing with concurrent accesses to the received messages hashmap
 	 */
@@ -86,7 +86,7 @@ public class RestoreService extends BaseService
 			}
 		}
 	}
-	
+
 	/**
 	 * @brief starts listening for CHUNK messages for the current chunk
 	 * @param fileId unique identifier of the file being restored
@@ -97,7 +97,7 @@ public class RestoreService extends BaseService
 		int generatedHash = calculateHash(fileId, chunkId);
 
 		synchronized (m_receivedLock)
-		{	
+		{
 			m_received.put(generatedHash, false);
 		}
 	}
@@ -110,7 +110,7 @@ public class RestoreService extends BaseService
 	public final void registerMessage(final String fileId, int chunkId)
 	{
 		int generatedHash = calculateHash(fileId, chunkId);
-		
+
 		synchronized (m_receivedLock)
 		{
 			m_received.put(generatedHash, true);
@@ -151,7 +151,7 @@ public class RestoreService extends BaseService
 			}
 		}
 	}
-	
+
 	/**
 	 * @brief places a binary chunk on the received chunks array
 	 * @param paramChunk binary chunk of the file being restored
@@ -169,11 +169,11 @@ public class RestoreService extends BaseService
 			}
 		}
 	}
-	
-	public final boolean hasChunk(final Chunk paramChunk)
+
+	public final boolean hasReceivedChunk(final Chunk paramChunk)
 	{
 		final String fileId = paramChunk.getFileId();
-	
+
 		synchronized (m_collectionLock)
 		{
 			if (!m_collection.containsKey(fileId))
@@ -222,7 +222,7 @@ public class RestoreService extends BaseService
 	 * @brief stops receiving binary chunks for the current file
 	 * @param fileId unique identifier of the file being restored
 	 */
-	public synchronized void stopReceivingChunks(final String fileId)
+	public final void stopReceivingChunks(final String fileId)
 	{
 		synchronized (m_collectionLock)
 		{

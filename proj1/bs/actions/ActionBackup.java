@@ -9,6 +9,9 @@ import bs.logging.Logger;
 
 public class ActionBackup extends Action
 {
+	private static final String messageInterrupted = "backup thread was interrupted before it could complete!";
+	private static final String messageFileOnline = "requested file has already been backed up on the network!";
+	private static final String messageFileNotFound = "requested file doesn't exist on the filesystem!";
 	private final String m_fileName;
 
 	public ActionBackup(final String fileName, int replicationDegree)
@@ -20,25 +23,25 @@ public class ActionBackup extends Action
 	private int m_degree;
 
 	private boolean sendChunks(final ChunkBackup chunkBackup)
-	{	
+	{
 		final Chunk[] chunkArray = chunkBackup.getChunks();
-		
+
 		for (int i = 0; i < chunkArray.length; i++)
 		{
-			final BackupHelper currentThread = new BackupHelper(chunkArray[i]);
+			final BackupHelper currentThread = new BackupHelper(chunkArray[i], false);
 
 			currentThread.start();
 
 			try
 			{
-				currentThread.join();		
+				currentThread.join();
 			}
 			catch (InterruptedException ex)
 			{
 				return false;
 			}
 		}
-		
+
 		return true;
 	}
 
@@ -52,24 +55,24 @@ public class ActionBackup extends Action
 			try
 			{
 				final ChunkBackup chunkBackup = new ChunkBackup(m_fileName, m_degree);
-				
+
 				if (sendChunks(chunkBackup))
 				{
 					actionResult = bsdbInstance.registerRestore(chunkBackup);
 				}
 				else
 				{
-					Logger.logError("backup thread was interrupted before it could complete!");
+					Logger.logError(messageInterrupted);
 				}
 			}
 			catch (IOException ex)
 			{
-				Logger.logError("requested file doesn't exist on the filesystem!");
+				Logger.logError(messageFileNotFound);
 			}
 		}
 		else
 		{
-			Logger.logError("requested file has already been backed up on the network!");
+			Logger.logError(messageFileOnline);
 		}
 	}
 }

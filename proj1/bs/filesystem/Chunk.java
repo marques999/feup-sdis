@@ -38,7 +38,20 @@ public class Chunk implements Serializable
 		m_size = fileBuffer.length;
 	}
 
-	// -----------------------------------------------------
+	//-----------------------------------------------------
+
+	public final boolean equals(final Object other)
+	{
+		if (other instanceof Chunk)
+		{
+			final Chunk rhs = (Chunk) other;
+			return (m_fileId.equals(rhs.m_fileId) && m_chunkId == rhs.m_chunkId);
+		}
+
+		return false;
+	}
+
+	//-----------------------------------------------------
 
 	private final String m_fileId;
 
@@ -47,7 +60,7 @@ public class Chunk implements Serializable
 		return m_fileId;
 	}
 
-	// -----------------------------------------------------
+	//-----------------------------------------------------
 
 	private final int m_degree;
 
@@ -56,7 +69,7 @@ public class Chunk implements Serializable
 		return m_degree;
 	}
 
-	// -----------------------------------------------------
+	//-----------------------------------------------------
 
 	private byte[] m_data;
 
@@ -65,7 +78,7 @@ public class Chunk implements Serializable
 		return m_data;
 	}
 
-	// -----------------------------------------------------
+	//-----------------------------------------------------
 
 	private final long m_size;
 
@@ -74,7 +87,7 @@ public class Chunk implements Serializable
 		return m_size;
 	}
 
-	// -----------------------------------------------------
+	//-----------------------------------------------------
 
 	private final int m_chunkId;
 

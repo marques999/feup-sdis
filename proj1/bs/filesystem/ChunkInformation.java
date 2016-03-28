@@ -57,18 +57,19 @@ public class ChunkInformation implements Serializable
 	{
 		m_peers.add(peerId);
 	}
-	
+
 	private boolean m_local;
-	
+
 	public final void setLocal()
 	{
 		m_local = true;
 	}
-	
+
 	public final void setRemote()
 	{
 		m_local = false;
 	}
+
 	public final boolean isRemote()
 	{
 		return !m_local;

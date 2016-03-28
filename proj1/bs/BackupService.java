@@ -16,7 +16,7 @@ public class BackupService extends BaseService
 	 * stores PUTCHUNK messages received for the files being reclaimed, key = (fileId, chunkId)
 	 */
 	private final HashMap<Integer, Set<Integer>> putchunkMessages = new HashMap<>();
-	
+
 	/**
 	 * mutex for dealing with concurrent accesses to the putchunk messages hashmap
 	 */
@@ -70,91 +70,106 @@ public class BackupService extends BaseService
 		byte[] messageBody = paramMessage.getBody();
 		boolean enhancementsEnabled = BackupSystem.enhancementsEnabled();
 		boolean chunkExists = false;
-		
-		if (fmInstance.chunkExists(fileId, chunkId))
-		{	
-			chunkExists = true;
-			
-			if (!bsdbInstance.hasLocalChunk(fileId, chunkId))
+
+		if (bsdbInstance.chunkWasReclaimed(fileId, chunkId))
+		{
+			int generatedHash = calculateHash(fileId, chunkId);
+
+			synchronized (putchunkLock)
 			{
-				Logger.logDebug("chunk with id=" + chunkId + " was already backed up, but missing in the database!");
-				Logger.logDebug("reading chunk with id=" + chunkId + " from existing archive...");
-				
-				final Chunk myChunk = fmInstance.readChunk(fileId, chunkId);
-				
-				if (myChunk != null)
+				if (putchunkMessages.containsKey(generatedHash))
 				{
-					bsdbInstance.registerLocalChunk(myChunk);
+					putchunkMessages.get(generatedHash).add(paramMessage.getPeerId());
 				}
-				else
+			}
+		}
+		else
+		{
+			if (fmInstance.chunkExists(fileId, chunkId))
+			{
+				chunkExists = true;
+
+				if (!bsdbInstance.hasLocalChunk(fileId, chunkId))
 				{
-					Logger.logError("could not read chunk with id=" + chunkId + " from existing archive!");
-					chunkExists = false;
+					Logger.logDebug("chunk " + chunkId + " was already backed up, but missing in the database!");
+					Logger.logDebug("reading chunk " + chunkId + " from existing archive...");
+
+					final Chunk myChunk = fmInstance.readChunk(fileId, chunkId);
+
+					if (myChunk != null)
+					{
+						bsdbInstance.registerLocalChunk(myChunk);
+					}
+					else
+					{
+						Logger.logError("could not read chunk " + chunkId + " from existing archive!");
+						chunkExists = false;
+					}
 				}
 			}
 			else
 			{
-				Logger.logWarning("chunk with id=" + chunkId + " already backed up by this peer!");
-			}
-		}
-		else
-		{
-			//---------------------------------------------------------
-			// REJECT CHUNKS IF THERE'S NO FREE SPACE LEFT ON THIS PEER
-			//---------------------------------------------------------
-			
-			if (messageBody.length > bsdbInstance.getFreeSpace())
-			{
-				return;
-			}
-		}
-		
-		final Chunk myChunk = paramMessage.generateChunk();
-		final ControlService svcControl = BackupSystem.getControlService();
+				// ---------------------------------------------------------
+				// REJECT CHUNKS IF THERE'S NO FREE SPACE LEFT ON THIS PEER
+				// ---------------------------------------------------------
 
-		//------------------------------------------------------------------------------
-		// IF PEER ALREADY HAS THIS CHUNK, SEND "STORED" CONFIRMATION TO REMAINING PEERS
-		//------------------------------------------------------------------------------
-		
-		if (chunkExists)
-		{
-			BackupSystem.sendSTORED(myChunk);
-		}
-		else
-		{
-			try
+				if (messageBody.length > bsdbInstance.getFreeSpace())
+				{
+					return;
+				}
+			}
+
+			final Chunk myChunk = paramMessage.generateChunk();
+			final ControlService svcControl = BackupSystem.getControlService();
+
+			// ------------------------------------------------------------------------------
+			// IF PEER ALREADY HAS THIS CHUNK, SEND "STORED" CONFIRMATION TO REMAINING PEERS
+			// ------------------------------------------------------------------------------
+
+			if (chunkExists)
 			{
-				//----------------------------------------------------------
+				BackupSystem.sendSTORED(myChunk);
+			}
+			else
+			{
+				// ----------------------------------------------------------
 				// START LISTENING FOR "STORED" CONFIRMATIONS FOR THIS CHUNK
-				//----------------------------------------------------------	
+				// ----------------------------------------------------------
 
 				if (enhancementsEnabled)
 				{
-					bsdbInstance.registerTemporaryChunk(myChunk);
-					svcControl.subscribeConfirmations(myChunk);
+					bsdbInstance.registerTemporaryChunk(myChunk);			
 				}
 				else
 				{
+					Logger.logDebug("saving chunk " + chunkId + " to storage...");
 					fmInstance.writeChunk(myChunk);
-					Logger.logDebug("saving chunk with id=" + chunkId + " to storage...");
-					svcControl.subscribeConfirmations(myChunk);
 				}
 				
-				Thread.sleep(generateBackoff());
-				
+				svcControl.subscribeConfirmations(myChunk);
+
+				try
+				{
+					Thread.sleep(generateBackoff());
+				}
+				catch (InterruptedException ex)
+				{
+					ex.printStackTrace();
+				}
+
 				int numberConfirmations = svcControl.getPeerConfirmations(myChunk);
-				
+
 				//-------------------------------------------------
 				// WAIT FOR "STORED" CONFIRMATIONS FROM OTHER PEERS
 				//-------------------------------------------------
-				
+
 				if (enhancementsEnabled)
 				{
 					if (numberConfirmations < replicationDegree)
 					{
-						Logger.logDebug("received " + numberConfirmations + " confirmations for chunk with id=" + chunkId);
+						Logger.logDebug("received " + numberConfirmations + " confirmations for chunk " + chunkId);
 						BackupSystem.sendSTORED(myChunk);
-						Logger.logDebug("saving chunk with id=" + chunkId + " to storage...");
+						Logger.logDebug("saving chunk " + chunkId + " to storage...");
 						fmInstance.writeChunk(myChunk);
 					}
 					else
@@ -164,23 +179,19 @@ public class BackupService extends BaseService
 				}
 				else
 				{
-					Logger.logDebug("received " + numberConfirmations + " confirmations for chunk with id=" + chunkId);
+					Logger.logDebug("received " + numberConfirmations + " confirmations for chunk " + chunkId);
 					BackupSystem.sendSTORED(myChunk);
 				}
-			
-				//---------------------------------------------------------
+
+				// ---------------------------------------------------------
 				// STOP LISTENING FOR "STORED" CONFIRMATIONS FOR THIS CHUNK
-				//---------------------------------------------------------
-				
+				// ---------------------------------------------------------
+
 				svcControl.unsubscribeConfirmations(myChunk);
-			}
-			catch (InterruptedException ex)
-			{
-				ex.printStackTrace();
 			}
 		}
 	}
-	
+
 	/**
 	 * @brief starts listening for PUTCHUNK messages for the current chunk
 	 * @param fileId unique identifier of the file being backed up
@@ -215,7 +226,7 @@ public class BackupService extends BaseService
 				return putchunkMessages.remove(generatedHash).size();
 			}
 		}
-		
+
 		return 0;
 	}
 

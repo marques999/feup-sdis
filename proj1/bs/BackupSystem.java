@@ -29,112 +29,114 @@ public class BackupSystem
 	{
 		return myPeerId;
 	}
-	
+
 	//----------------------------------------------------
-	
+
 	private static String myVersion = "1.0";
-	
+
 	public static String getVersion()
 	{
 		return myVersion;
 	}
-	
+
 	//----------------------------------------------------
-	
+
 	private static BackupService svcBackup;
-	
+
 	public static BackupService getBackupService()
 	{
 		return svcBackup;
 	}
-	
+
 	//----------------------------------------------------
-	
+
 	private static RestoreService svcRestore;
-	
+
 	public static RestoreService getRestoreService()
 	{
 		return svcRestore;
 	}
-	
+
 	//----------------------------------------------------
-	
+
 	private static ControlService svcControl;
-	
+
 	public static ControlService getControlService()
 	{
 		return svcControl;
-	}	
-	
+	}
+
 	//----------------------------------------------------
-	
+
 	private static boolean enableEnhancements = false;
-	
+
 	public static boolean enhancementsEnabled()
 	{
 		return enableEnhancements;
 	}
-	
+
 	public static void setEnhancements(boolean enhancementsEnabled)
 	{
 		enableEnhancements = enhancementsEnabled;
 	}
-	
+
 	//----------------------------------------------------
-	
+
 	private static BackupStorage bsdbInstance;
-	
+
 	public static BackupStorage getStorage()
 	{
 		return bsdbInstance;
 	}
-	
+
 	//----------------------------------------------------
-		
-	private static MulticastConnection MDB;	
-	
+
+	private static MulticastConnection MDB;
+
 	private static boolean issueBackupCommand(final Message paramMessage)
-	{	
+	{
 		return MDB.send(paramMessage.getMessage());
 	}
-	
+
 	//----------------------------------------------------
-	
+
 	private static MulticastConnection MC;
-	
+
 	private static boolean issueControlCommand(final Message paramMessage)
 	{
 		return MC.send(paramMessage.getMessage());
 	}
 
 	//----------------------------------------------------
-	
+
 	private static MulticastConnection MDR;
-	
+
 	private static boolean issueRestoreCommand(final Message paramMessage)
 	{
 		return MDR.send(paramMessage.getMessage());
 	}
-	
+
+	//----------------------------------------------------
+
 	private static UnicastAdapter MDR_enhanced;
-	
+
 	private static boolean issueRestoreEnhancedCommand(final Message paramMessage, final InetAddress paramAddress, int paramPort)
 	{
 		return MDR_enhanced.send(paramMessage.getMessage(), paramAddress, paramPort);
 	}
-	
+
 	//----------------------------------------------------
-	
+
 	private static File bsdbFilename;
 	private static FileManager fmInstance;
-	
+
 	public static FileManager getFiles()
 	{
 		return fmInstance;
 	}
-	
+
 	//----------------------------------------------------
-	
+
 	public static void initializeStorage(final File bsdbFilename)
 	{
 		if (bsdbFilename.exists())
@@ -152,14 +154,14 @@ public class BackupSystem
 		else
 		{
 			bsdbInstance = new BackupStorage(bsdbFilename);
-			
+
 			if (!writeStorage())
 			{
 				Logger.logError("could not write database state to disk!");
 				System.exit(1);
 			}
 		}
-		
+
 		fmInstance = new FileManager(myPeerId);
 	}
 
@@ -167,47 +169,47 @@ public class BackupSystem
 
 	public static boolean sendCHUNK(final Chunk paramChunk)
 	{
-		Logger.logChunkCommand("CHUNK", paramChunk.getFileId(), paramChunk.getChunkId());	
+		Logger.logChunkCommand("CHUNK", paramChunk.getFileId(), paramChunk.getChunkId());
 		return issueRestoreCommand(new ChunkMessage(paramChunk));
 	}
-	
+
 	public static boolean sendEnhancedCHUNK(final Chunk paramChunk, final InetAddress paramAddress, int paramPort)
 	{
-		Logger.logChunkCommand("CHUNKENH", paramChunk.getFileId(), paramChunk.getChunkId());	
+		Logger.logChunkCommand("CHUNK", paramChunk.getFileId(), paramChunk.getChunkId());
 		return issueRestoreEnhancedCommand(new ChunkMessage(paramChunk), paramAddress, paramPort);
 	}
-	
+
 	public static boolean sendDELETE(final String fileId)
 	{
 		return issueControlCommand(new DeleteMessage(fileId));
 	}
-	
+
 	public static boolean sendGETCHUNK(final String fileId, int chunkId)
 	{
-		Logger.logChunkCommand("GETCHUNK", fileId, chunkId);	
+		Logger.logChunkCommand("GETCHUNK", fileId, chunkId);
 		return issueControlCommand(new GetchunkMessage(fileId, chunkId));
 	}
-	
+
 	public static boolean sendPUTCHUNK(final Chunk paramChunk)
 	{
-		Logger.logChunkCommand("PUTCHUNK", paramChunk.getFileId(), paramChunk.getChunkId());	
+		Logger.logChunkCommand("PUTCHUNK", paramChunk.getFileId(), paramChunk.getChunkId());
 		return issueBackupCommand(new PutchunkMessage(paramChunk));
 	}
 
 	public static boolean sendREMOVED(final String fileId, int chunkId)
 	{
-		Logger.logChunkCommand("REMOVED", fileId, chunkId);	
+		Logger.logChunkCommand("REMOVED", fileId, chunkId);
 		return issueControlCommand(new RemovedMessage(fileId, chunkId));
 	}
 
 	public static boolean sendSTORED(final Chunk paramChunk)
 	{
-		Logger.logChunkCommand("STORED", paramChunk.getFileId(), paramChunk.getChunkId());	
+		Logger.logChunkCommand("STORED", paramChunk.getFileId(), paramChunk.getChunkId());
 		return issueControlCommand(new StoredMessage(paramChunk.getFileId(), paramChunk.getChunkId()));
 	}
-	
+
 	//----------------------------------------------------
-	
+
 	public static boolean writeStorage()
 	{
 		if (!bsdbFilename.exists())
@@ -221,7 +223,7 @@ public class BackupSystem
 				return false;
 			}
 		}
-	
+
 		try (final ObjectOutputStream objectOutputStream = new ObjectOutputStream(new FileOutputStream(bsdbFilename)))
 		{
 			objectOutputStream.writeObject(bsdbInstance);
@@ -230,10 +232,10 @@ public class BackupSystem
 		{
 			return false;
 		}
-		
+
 		return true;
 	}
-	
+
 	//----------------------------------------------------
 
 	public static void main(final String[] args) throws IOException
@@ -244,8 +246,8 @@ public class BackupSystem
 		}
 		else
 		{
-			System.out.println("usage: BackupSystem <Host> <PeerId> [<McPort> <MdbPort> <MdrPort>]");		
-		}	
+			System.out.println("usage: BackupSystem <Host> <PeerId> [<McPort> <MdbPort> <MdrPort>]");
+		}
 	}
 
 	protected static void initializePeer(final String[] args)
@@ -261,7 +263,7 @@ public class BackupSystem
 		{
 			Logger.abort("invalid multicast group address!");
 		}
-		
+
 		Logger.logDebug("attempting to parse peer identifier...");
 
 		try
@@ -309,34 +311,34 @@ public class BackupSystem
 		{
 			Logger.logError("invalid or missing restore channel port, assuming default...");
 		}
-		
-		//----------------------------------------------------
-		
+
+		// ----------------------------------------------------
+
 		MDB = new MulticastConnection("backup channel", myHost, multicastBackupPort, false);
 		MDR = new MulticastConnection("restore channel", myHost, multicastRestorePort, false);
 		MC = new MulticastConnection("control channel", myHost, multicastControlPort, false);
-	
-		//----------------------------------------------------
-		
-		bsdbFilename = new File("storage$"+ myPeerId + ".bsdb");
+
+		// ----------------------------------------------------
+
+		bsdbFilename = new File("storage$" + myPeerId + ".bsdb");
 		initializeStorage(bsdbFilename);
 		bsdbInstance.dumpStorage();
 		bsdbInstance.dumpRestore();
-		
-		//----------------------------------------------------
+
+		// ----------------------------------------------------
 
 		svcBackup = new BackupService(myHost, multicastBackupPort);
 		svcControl = new ControlService(myHost, multicastControlPort);
-		svcRestore = new RestoreService(myHost, multicastRestorePort);			
+		svcRestore = new RestoreService(myHost, multicastRestorePort);
 		svcBackup.start();
 		svcControl.start();
 		svcRestore.start();
-		
+
 		if (enableEnhancements)
 		{
 			Logger.logDebug("starting unicast restore protocol...");
 			MDR_enhanced = new UnicastAdapter(svcRestore, 20000 + myPeerId);
 			MDR_enhanced.start();
-		}	
+		}
 	}
 }
