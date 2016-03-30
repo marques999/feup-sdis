@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Set;
 
-import bs.BackupSystem;
+import bs.Peer;
 
 public class ChunkCollection implements Serializable
 {
@@ -163,7 +163,7 @@ public class ChunkCollection implements Serializable
 			{
 				chunkInformation.setLocal();
 				deltaSpace = chunkInformation.getLength();
-				registerPeer(chunkId, BackupSystem.getPeerId());
+				registerPeer(chunkId, Peer.getPeerId());
 				m_size += deltaSpace;
 			}
 			else
@@ -178,7 +178,7 @@ public class ChunkCollection implements Serializable
 			if (localChunk)
 			{
 				deltaSpace = chunk.getLength();
-				registerPeer(chunkId, BackupSystem.getPeerId());
+				registerPeer(chunkId, Peer.getPeerId());
 				m_size += chunk.getLength();
 			}
 		}

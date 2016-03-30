@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-import bs.BackupGlobals;
+import bs.PeerGlobals;
 
 public class ChunkBackup
 {
@@ -25,7 +25,7 @@ public class ChunkBackup
 		}
 
 		m_size = fileDescriptor.length();
-		m_count = (int) (m_size / BackupGlobals.maximumChunkSize + 1);
+		m_count = (int) (m_size / PeerGlobals.maximumChunkSize + 1);
 		m_chunks = new Chunk[m_count];
 		m_fileName = fileName;
 

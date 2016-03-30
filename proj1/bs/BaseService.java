@@ -30,8 +30,13 @@ public abstract class BaseService extends Thread
 		m_connection = new MulticastConnection(paramName, paramAddress, paramPort, true);
 		m_random = new Random();
 		m_socket = m_connection.getSocket();
-		fmInstance = BackupSystem.getFiles();
-		bsdbInstance = BackupSystem.getStorage();
+		fmInstance = Peer.getFiles();
+		bsdbInstance = Peer.getStorage();
+	}
+	
+	public final boolean available()
+	{
+		return m_connection.available();
 	}
 
 	private final String[] processHeader(final String paramHeader)
@@ -57,7 +62,7 @@ public abstract class BaseService extends Thread
 
 	private final boolean checkPeerId(final String[] messageHeader)
 	{
-		return messageHeader.length > 2 && Integer.parseInt(messageHeader[Message.SenderId]) != BackupSystem.getPeerId();
+		return messageHeader.length > 2 && Integer.parseInt(messageHeader[Message.SenderId]) != Peer.getPeerId();
 	}
 
 	protected abstract void processMessage(final GenericMessage paramMessage, final DatagramPacket paramPacket, boolean hasPayload);
@@ -71,7 +76,22 @@ public abstract class BaseService extends Thread
 		int payloadLength = paramPacket.getLength();
 		byte[] messageBody = null;
 
-		final String[] messageHeader = processHeader(convertedMessage.substring(0, payloadSeparatorStart));
+		String fullHeader = convertedMessage.substring(0, payloadSeparatorStart);
+		String[] messageHeader = null;
+		String[] messageExtra = null;
+
+		int extraSeparatorStart = fullHeader.indexOf("\r\n");
+		boolean enhancedMessage = (extraSeparatorStart > 0);
+
+		if (enhancedMessage)
+		{
+			messageHeader = processHeader(fullHeader.substring(0, extraSeparatorStart));
+			messageExtra = processHeader(fullHeader.substring(extraSeparatorStart + "\r\n".length(), payloadSeparatorStart));
+		}
+		else
+		{
+			messageHeader = processHeader(fullHeader);
+		}
 
 		if (checkPeerId(messageHeader))
 		{
@@ -82,14 +102,21 @@ public abstract class BaseService extends Thread
 			}
 			else
 			{
-				processMessage(new GenericMessage(messageHeader), paramPacket, false);
+				if (enhancedMessage)
+				{
+					processMessage(new GenericMessage(messageHeader, messageExtra), paramPacket, false);
+				}
+				else
+				{
+					processMessage(new GenericMessage(messageHeader), paramPacket, false);
+				}
 			}
 		}
 	}
 
 	protected final int generateBackoff()
 	{
-		return m_random.nextInt(BackupGlobals.maximumBackoffTime);
+		return m_random.nextInt(PeerGlobals.maximumBackoffTime);
 	}
 
 	protected final int calculateHash(final String fileId, int chunkId)
@@ -107,7 +134,7 @@ public abstract class BaseService extends Thread
 	@Override
 	public void run()
 	{
-		byte[] buf = new byte[BackupGlobals.maximumPacketLength];
+		byte[] buf = new byte[PeerGlobals.maximumPacketLength];
 
 		while (m_connection.available())
 		{

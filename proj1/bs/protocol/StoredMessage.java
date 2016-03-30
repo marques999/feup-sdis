@@ -4,12 +4,7 @@ public class StoredMessage extends SimpleMessage
 {
 	public StoredMessage(final String fileId, int chunkId)
 	{
-		super(fileId, chunkId);
-	}
-
-	public StoredMessage(final String[] paramHeader)
-	{
-		super(paramHeader);
+		super(fileId, chunkId, "1.0");
 	}
 
 	@Override

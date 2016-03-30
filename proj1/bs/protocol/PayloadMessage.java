@@ -34,42 +34,9 @@ public abstract class PayloadMessage extends Message
 	 */
 	private int m_degree;
 
-	protected PayloadMessage(final String[] paramHeader, final byte[] paramBuffer)
+	protected PayloadMessage(final Chunk paramChunk, int replicationDegree, final String msgVersion)
 	{
-		super(paramHeader);
-
-		m_body = paramBuffer;
-		m_chunkId = Integer.parseInt(paramHeader[Message.ChunkId]);
-
-		if (getLength() > Message.ReplicationDegree)
-		{
-			m_degree = Integer.parseInt(paramHeader[Message.ReplicationDegree]);
-		}
-		else
-		{
-			m_degree = -1;
-		}
-	}
-
-	public int getChunkId()
-	{
-		return m_chunkId;
-	}
-
-	public int getDegree()
-	{
-		return m_degree;
-	}
-
-	public byte[] getBody()
-	{
-		return m_body;
-	}
-
-	protected PayloadMessage(final Chunk paramChunk, int replicationDegree)
-	{
-		super(replicationDegree > 0 ? 6 : 5, paramChunk.getFileId());
-
+		super(replicationDegree > 0 ? 6 : 5, paramChunk.getFileId(), msgVersion);
 		m_body = paramChunk.getData();
 		m_chunkId = paramChunk.getChunkId();
 		m_degree = replicationDegree;

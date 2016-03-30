@@ -4,33 +4,48 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import bs.logging.Logger;
 
 public class UnicastAdapter extends Thread
 {
-	private BaseService m_service;
+	private static final String msgListening = "unicast service: listening at port %d";
+	private static final String msgConnectionError = "unicast service: offline (connection problem)!";
+	private final BaseService m_service;
+	private final Object m_mutex;
 	private DatagramSocket m_socket;
-	private Object m_mutex;
 
-	public UnicastAdapter(final BaseService paramService, int paramPort)
+	public UnicastAdapter(final BaseService paramService)
 	{
 		m_service = paramService;
-		m_hostPort = paramPort;
 		m_available = false;
 		m_mutex = new Object();
 
 		try
 		{
-			m_socket = new DatagramSocket(m_hostPort);
+			m_socket = new DatagramSocket(0);
 			m_available = true;
 		}
 		catch (IOException ex)
 		{
 			m_available = false;
 		}
+		
+		if (m_available)
+		{
+			Logger.logInformation(String.format(msgListening, getPort()));
+		}
+		else
+		{
+			Logger.logError(String.format(msgConnectionError));
+		}
 	}
 
-	private int m_hostPort;
 	private boolean m_available;
+
+	public final int getPort()
+	{
+		return m_socket.getLocalPort();
+	}
 
 	public final boolean available()
 	{
@@ -62,7 +77,7 @@ public class UnicastAdapter extends Thread
 	@Override
 	public void run()
 	{
-		byte[] buf = new byte[BackupGlobals.maximumPacketLength];
+		byte[] buf = new byte[PeerGlobals.maximumPacketLength];
 
 		while (m_available)
 		{

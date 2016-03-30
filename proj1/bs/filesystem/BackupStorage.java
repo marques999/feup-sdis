@@ -7,7 +7,7 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
-import bs.BackupSystem;
+import bs.Peer;
 import bs.logging.Logger;
 
 public class BackupStorage implements Serializable
@@ -55,14 +55,14 @@ public class BackupStorage implements Serializable
 
 	public final boolean registerRestore(final ChunkBackup paramChunks)
 	{
-		Logger.logDebug("registering " + paramChunks.getFileName() + " for restore...");
+		Logger.logInformation("registering " + paramChunks.getFileName() + " for restore...");
 
 		synchronized (remoteFiles)
 		{
 			remoteFiles.put(paramChunks.getFileName(), new FileInformation(paramChunks));
 		}
 
-		BackupSystem.writeStorage();
+		Peer.writeStorage();
 
 		return true;
 	}
@@ -73,8 +73,9 @@ public class BackupStorage implements Serializable
 		{
 			if (remoteFiles.containsKey(fileName))
 			{
+				Logger.logInformation("unregistering " + fileName + " from restore...");
 				remoteFiles.remove(fileName);
-				BackupSystem.writeStorage();
+				Peer.writeStorage();
 			}
 		}
 
@@ -197,7 +198,7 @@ public class BackupStorage implements Serializable
 			return null;
 		}
 
-		return BackupSystem.getFiles().readChunk(mostReplicatedFile, mostReplicatedChunk);
+		return Peer.getFiles().readChunk(mostReplicatedFile, mostReplicatedChunk);
 	}
 
 	public synchronized void registerPeer(final String fileId, int chunkId, int peerId)
@@ -206,7 +207,7 @@ public class BackupStorage implements Serializable
 		{
 			if (localChunks.get(fileId).registerPeer(chunkId, peerId))
 			{
-				BackupSystem.writeStorage();
+				Peer.writeStorage();
 			}	
 		}
 	}
@@ -217,7 +218,7 @@ public class BackupStorage implements Serializable
 		{
 			if (localChunks.get(fileId).removePeer(chunkId, peerId))
 			{
-				BackupSystem.writeStorage();
+				Peer.writeStorage();
 			}	
 		}
 	}
@@ -264,7 +265,7 @@ public class BackupStorage implements Serializable
 				currentSize += deltaBytes;
 			}
 
-			BackupSystem.writeStorage();
+			Peer.writeStorage();
 		}
 		else
 		{
@@ -292,7 +293,7 @@ public class BackupStorage implements Serializable
 		{
 			deltaBytes = localChunks.get(fileId).removeChunk(chunkId);
 			currentSize -= deltaBytes;
-			BackupSystem.writeStorage();
+			Peer.writeStorage();
 		}
 
 		return deltaBytes;
@@ -317,7 +318,7 @@ public class BackupStorage implements Serializable
 			return false;
 		}
 
-		final FileManager fmInstance = BackupSystem.getFiles();
+		final FileManager fmInstance = Peer.getFiles();
 		final ChunkCollection chunkCollection = localChunks.get(fileId);
 		final Integer[] chunkIds = chunkCollection.getChunkIds();
 
@@ -338,7 +339,7 @@ public class BackupStorage implements Serializable
 			localChunks.remove(fileId);
 		}
 
-		BackupSystem.writeStorage();
+		Peer.writeStorage();
 
 		return true;
 	}

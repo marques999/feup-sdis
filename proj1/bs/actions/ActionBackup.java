@@ -12,15 +12,15 @@ public class ActionBackup extends Action
 	private static final String messageInterrupted = "backup thread was interrupted before it could complete!";
 	private static final String messageFileOnline = "requested file has already been backed up on the network!";
 	private static final String messageFileNotFound = "requested file doesn't exist on the filesystem!";
-	private final String m_fileName;
+	private final String fileName;
 
-	public ActionBackup(final String fileName, int replicationDegree)
+	public ActionBackup(final String paramName, int paramDegree)
 	{
-		m_fileName = fileName;
-		m_degree = replicationDegree;
+		fileName = paramName;
+		replicationDegree = paramDegree;
 	}
 
-	private int m_degree;
+	private int replicationDegree;
 
 	private boolean sendChunks(final ChunkBackup chunkBackup)
 	{
@@ -48,13 +48,13 @@ public class ActionBackup extends Action
 	@Override
 	public void run()
 	{
-		final FileInformation restoreInformation = bsdbInstance.getRestoreInformation(m_fileName);
+		final FileInformation restoreInformation = bsdbInstance.getRestoreInformation(fileName);
 
 		if (restoreInformation == null)
 		{
 			try
 			{
-				final ChunkBackup chunkBackup = new ChunkBackup(m_fileName, m_degree);
+				final ChunkBackup chunkBackup = new ChunkBackup(fileName, replicationDegree);
 
 				if (sendChunks(chunkBackup))
 				{

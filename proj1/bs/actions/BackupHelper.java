@@ -1,7 +1,7 @@
 package bs.actions;
 
-import bs.BackupGlobals;
-import bs.BackupSystem;
+import bs.PeerGlobals;
+import bs.Peer;
 import bs.ControlService;
 import bs.filesystem.BackupStorage;
 import bs.filesystem.Chunk;
@@ -26,20 +26,20 @@ public class BackupHelper extends Thread
 	@Override
 	public void run()
 	{
-		final ControlService controlService = BackupSystem.getControlService();
-		final BackupStorage bsdbInstance = BackupSystem.getStorage();		
+		final ControlService controlService = Peer.getControlService();
+		final BackupStorage bsdbInstance = Peer.getStorage();		
 		boolean actionResult = false;
 		int currentAttempt = 0;
 		int chunkId = myChunk.getChunkId();
 		int replicationDegree = myChunk.getReplicationDegree();
-		int waitingTime = BackupGlobals.initialWaitingTime;
+		int waitingTime = PeerGlobals.initialWaitingTime;
 
 		controlService.subscribeConfirmations(myChunk);
 
 		while (!actionResult)
 		{
-			controlService.resetPeerConfirmations(myChunk);
-			BackupSystem.sendPUTCHUNK(myChunk);
+			controlService.resetPeerConfirmations(myChunk);	
+			Peer.sendPUTCHUNK(myChunk);
 
 			try
 			{
@@ -53,7 +53,7 @@ public class BackupHelper extends Thread
 
 			if (reclaimMode)
 			{
-				BackupSystem.sendSTORED(myChunk);
+				Peer.sendSTORED(myChunk);
 			}
 
 			int existingConfirmations = bsdbInstance.getPeerCount(myChunk.getFileId(), chunkId);
@@ -65,7 +65,7 @@ public class BackupHelper extends Thread
 			{
 				currentAttempt++;
 
-				if (currentAttempt > BackupGlobals.maximumAttempts)
+				if (currentAttempt > PeerGlobals.maximumAttempts)
 				{
 					Logger.logError(msgBackupFailed);
 					actionResult = true;
@@ -78,7 +78,6 @@ public class BackupHelper extends Thread
 			}
 			else
 			{
-				Logger.logInformation("chunk " + chunkId + " was backed up sucessfully");
 				actionResult = true;
 			}
 		}

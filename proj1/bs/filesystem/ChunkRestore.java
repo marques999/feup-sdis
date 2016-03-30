@@ -44,7 +44,7 @@ public class ChunkRestore
 		final Chunk[] fileChunks = new Chunk[m_count];
 
 		for (int chunkId = 0; chunkId < m_count; chunkId++)
-		{
+		{			
 			if (!m_chunksmap.containsKey(chunkId))
 			{
 				throw new MissingChunkException(m_fileId);

@@ -2,37 +2,31 @@ package bs.protocol;
 
 public abstract class SimpleMessage extends Message
 {
-	public SimpleMessage(final String fileId, int chunkId)
+	public SimpleMessage(final String fileId, int chunkId, final String msgVersion)
 	{
-		super(5, fileId);
+		super(5, fileId, msgVersion);
 		m_chunkId = chunkId;
-	}
-
-	public SimpleMessage(final String[] paramHeader)
-	{
-		super(paramHeader);
-		m_chunkId = Integer.parseInt(paramHeader[Message.ChunkId]);
 	}
 
 	private int m_chunkId;
 
-	public int getChunkId()
-	{
-		return m_chunkId;
-	}
-
 	@Override
-	public final void dump()
+	public void dump()
 	{
 		super.dump();
 		System.out.println("\tChunkNo: " + m_chunkId);
 	}
 
-	@Override
-	public final byte[] getMessage()
+	protected String getHeader()
 	{
 		final String[] m_header = generateHeader();
 		m_header[Message.ChunkId] = Integer.toString(m_chunkId);
-		return (String.join(" ", m_header) + Message.CRLF).getBytes();
+		return String.join(" ", m_header);
+	}
+
+	@Override
+	public byte[] getMessage()
+	{
+		return (getHeader() + Message.CRLF).getBytes();
 	}
 }

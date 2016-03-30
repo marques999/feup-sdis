@@ -117,7 +117,7 @@ public class ControlService extends BaseService
 		int currentReplicationDegree = bsdbInstance.getPeerCount(fileId, chunkId);
 		int desiredReplicationDegree = bsdbInstance.getReplicationDegree(fileId, chunkId);
 
-		final BackupService backupService = BackupSystem.getBackupService();
+		final BackupService backupService = Peer.getBackupService();
 
 		// --------------------------------------------------------
 		// IF PEER COUNT DROPS BELOW THE DESIRED REPLICATION DEGREE
@@ -187,11 +187,10 @@ public class ControlService extends BaseService
 	 */
 	public void processGETCHUNK(final GenericMessage paramMessage, final DatagramPacket paramPacket)
 	{
-		final RestoreService restoreService = BackupSystem.getRestoreService();
+		final RestoreService restoreService = Peer.getRestoreService();
 		final String fileId = paramMessage.getFileId();
 
 		int chunkId = paramMessage.getChunkId();
-		boolean enableEnhancement = BackupSystem.enhancementsEnabled();
 
 		if (bsdbInstance.hasLocalChunk(fileId, chunkId))
 		{
@@ -216,13 +215,15 @@ public class ControlService extends BaseService
 
 				if (myChunk != null)
 				{
-					if (enableEnhancement)
+					if (paramMessage.hasEnhancements())
 					{
-						BackupSystem.sendEnhancedCHUNK(myChunk, paramPacket.getAddress(), 20000 + paramMessage.getPeerId());
+						Peer.startUnicast();
+						Peer.sendMulticastCHUNK2_0(myChunk);
+						Peer.sendUnicastCHUNK2_0(myChunk, paramPacket.getAddress(), paramMessage.getPort());
 					}
 					else
 					{
-						BackupSystem.sendCHUNK(myChunk);
+						Peer.sendCHUNK(myChunk);
 					}
 				}
 				else

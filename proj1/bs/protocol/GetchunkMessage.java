@@ -4,12 +4,7 @@ public class GetchunkMessage extends SimpleMessage
 {
 	public GetchunkMessage(final String fileId, int chunkId)
 	{
-		super(fileId, chunkId);
-	}
-
-	public GetchunkMessage(final String[] paramHeader)
-	{
-		super(paramHeader);
+		super(fileId, chunkId, "1.0");
 	}
 
 	@Override

@@ -9,9 +9,9 @@ import bs.logging.Logger;
 
 public class MulticastConnection
 {
-	private static final String msgConnected = "%s connected to %s:%d";
+	private static final String msgConnected = "%s forwarding messages to %s:%d";
 	private static final String msgListening = "%s listening at %s:%d";
-	private static final String msgConnectionError = "%s: connection error!";
+	private static final String msgConnectionError = "%s: offline (connection problem)!";
 
 	public MulticastConnection(final String paramName, final InetAddress paramAddress, int paramPort, boolean paramListen)
 	{
@@ -47,16 +47,16 @@ public class MulticastConnection
 
 			if (paramListen)
 			{
-				Logger.logDebug(String.format(msgListening, m_name, ipAddress, m_port));
+				Logger.logInformation(String.format(msgListening, m_name, ipAddress, m_port));
 			}
 			else
 			{
-				Logger.logDebug(String.format(msgConnected, m_name, ipAddress, m_port));
+				Logger.logInformation(String.format(msgConnected, m_name, ipAddress, m_port));
 			}
 		}
 		else
 		{
-			Logger.logDebug(String.format(msgConnectionError, m_name));
+			Logger.logError(String.format(msgConnectionError, m_name));
 		}
 	}
 

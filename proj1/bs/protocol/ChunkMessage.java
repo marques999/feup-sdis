@@ -6,12 +6,7 @@ public class ChunkMessage extends PayloadMessage
 {
 	public ChunkMessage(final Chunk paramChunk)
 	{
-		super(paramChunk, 0);
-	}
-
-	public ChunkMessage(final String[] paramHeader, final byte[] paramBuffer)
-	{
-		super(paramHeader, paramBuffer);
+		super(paramChunk, 0, "1.0");
 	}
 
 	@Override

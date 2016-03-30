@@ -1,6 +1,6 @@
 package bs.protocol;
 
-import bs.BackupSystem;
+import bs.Peer;
 
 public abstract class Message
 {
@@ -8,6 +8,7 @@ public abstract class Message
 	 * Message types enumeration
 	 */
 	public static final int Type = 0;
+	public static final int Port = 0;
 	public static final int Version = 1;
 	public static final int SenderId = 2;
 	public static final int FileId = 3;
@@ -17,47 +18,7 @@ public abstract class Message
 	 * 
 	 */
 	public static final String CRLF = "\r\n\r\n";
-	/*
-	 * 
-	 */
-	public static Message createSimpleMessage(final String[] messageHeader)
-	{
-		if (messageHeader[0].equals("GETCHUNK"))
-		{
-			return new GetchunkMessage(messageHeader);
-		}
-		else if (messageHeader[0].equals("DELETE"))
-		{
-			return new DeleteMessage(messageHeader);
-		}
-		else if (messageHeader[0].equals("STORED"))
-		{
-			return new StoredMessage(messageHeader);
-		}
-		else if (messageHeader[0].equals("REMOVED"))
-		{		
-			return new RemovedMessage(messageHeader);
-		}
-		
-		return null;
-	}
-	
-	/*
-	 * 
-	 */
-	public static PayloadMessage createPayloadMessage(final String[] messageHeader, final byte[] messageBody)
-	{
-		if (messageHeader[0].equals("PUTCHUNK"))
-		{
-			return new PutchunkMessage(messageHeader, messageBody);
-		}
-		else if (messageHeader[0].equals("CHUNK"))
-		{
-			return new ChunkMessage(messageHeader, messageBody);
-		}
-		
-		return null;
-	}
+
 	
 	/*
 	 * This attribute represents the ID of the server that has sent the message.
@@ -93,47 +54,14 @@ public abstract class Message
 	private final int m_length;
 
 	/*
-	 * This constructor can be used parse data from the received messages
-	 * @throws VersionMismatchException
-	 */
-	protected Message(final String[] paramHeader)
-	{
-		m_length = paramHeader.length;
-		m_senderId = Integer.parseInt(paramHeader[Message.SenderId]);
-		m_fileId = paramHeader[Message.FileId];
-		m_version = paramHeader[Message.Version];
-	}
-
-	/*
 	 * This constructor can be used to generate a message to be sent
 	 */
-	protected Message(int messageLength, final String fileId)
+	protected Message(int messageLength, final String fileId, final String msgVersion)
 	{
 		m_length = messageLength;
-		m_senderId = BackupSystem.getPeerId();
-		m_version = BackupSystem.getVersion();
+		m_senderId = Peer.getPeerId();
+		m_version = msgVersion;
 		m_fileId = fileId;
-	}
-
-	public final String getFileId()
-	{
-		return m_fileId;
-	}
-
-	/*
-	 * This method returns the protocol version
-	 */
-	public final String getVersion()
-	{
-		return m_version;
-	}
-
-	/*
-	 * This method returns the number of message fields
-	 */
-	public final int getLength()
-	{
-		return m_length;
 	}
 
 	/*

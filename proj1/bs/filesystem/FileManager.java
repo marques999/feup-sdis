@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
-import bs.BackupSystem;
+import bs.Peer;
 import bs.logging.Logger;
 
 public class FileManager
@@ -25,7 +25,7 @@ public class FileManager
 		createDirectory(ChunksDirectory);
 		RestoreDirectory = "restore$" + peerId + "/";
 		createDirectory(RestoreDirectory);
-		LocalStorage = BackupSystem.getStorage();
+		LocalStorage = Peer.getStorage();
 	}
 
 	public final boolean fileExists(final String paramFile)

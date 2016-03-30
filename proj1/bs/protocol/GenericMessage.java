@@ -1,30 +1,12 @@
 package bs.protocol;
 
-import java.util.HashMap;
-
 import bs.filesystem.Chunk;
 
 public class GenericMessage
 {
-	private final static HashMap<String, Integer> typeLength = new HashMap<String, Integer>();
-
-	static
-	{
-		typeLength.put("DELETE", 4);
-		typeLength.put("PUTCHUNK", 6);
-		typeLength.put("STORED", 5);
-		typeLength.put("REMOVED", 5);
-		typeLength.put("CHUNK", 5);
-		typeLength.put("GETCHUNK", 5);
-	}
-	
-	/*
-	 * This constructor can be used parse data from the received messages
-	 * @throws VersionMismatchException
-	 */
 	public GenericMessage(final String[] paramHeader)
 	{
-		this(paramHeader, null);
+		this(paramHeader, null, null);
 	}
 	
 	public final Chunk generateChunk()
@@ -34,15 +16,18 @@ public class GenericMessage
 	
 	public GenericMessage(final String[] paramHeader, final byte[] paramBody)
 	{
+		this(paramHeader, null, paramBody);
+	}
+	
+	public GenericMessage(final String[] paramHeader, final String[] paramExtra)
+	{
+		this(paramHeader, paramExtra, null);
+	}
+	
+	private GenericMessage(final String[] paramHeader, final String[] paramExtra, final byte[] paramBody)
+	{
 		m_type = paramHeader[Message.Type];
 		m_length = paramHeader.length;
-
-		if (m_length != typeLength.get(m_type))
-		{
-			System.err.println("wrong message size!");
-			// throw new UnknownMessageException(m_type);
-		}
-
 		m_peerId = Integer.parseInt(paramHeader[Message.SenderId]);
 		m_fileId = paramHeader[Message.FileId];
 		m_version = paramHeader[Message.Version];
@@ -64,8 +49,29 @@ public class GenericMessage
 		{
 			m_degree = -1;
 		}
-		
+
 		m_body = paramBody;
+
+		if (m_version.equals("2.0") && paramExtra != null)
+		{
+			if (paramExtra.length > Message.Port)
+			{
+				m_port = Integer.parseInt(paramExtra[Message.Port]);
+			}
+			else
+			{
+				m_port = -1;
+			}
+		}
+		else
+		{
+			m_port = -1;
+		}
+	}
+	
+	public final boolean hasEnhancements()
+	{
+		return m_version.equals("2.0");
 	}
 
 	/*
@@ -162,5 +168,12 @@ public class GenericMessage
 	public final int getDegree()
 	{
 		return m_degree;
+	}
+	
+	private final int m_port;
+	
+	public final int getPort()
+	{
+		return m_port;
 	}
 }

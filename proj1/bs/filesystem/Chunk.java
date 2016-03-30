@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.Arrays;
 
-import bs.BackupGlobals;
+import bs.PeerGlobals;
 
 public class Chunk implements Serializable
 {
@@ -13,7 +13,7 @@ public class Chunk implements Serializable
 
 	public Chunk(final InputStream fileStream, final String fileId, int chunkId, int replicationDegree) throws IOException
 	{
-		m_data = new byte[(int) BackupGlobals.maximumChunkSize];
+		m_data = new byte[(int) PeerGlobals.maximumChunkSize];
 
 		int bytesRead = fileStream.read(m_data);
 
@@ -103,6 +103,6 @@ public class Chunk implements Serializable
 
 	public final boolean isLast()
 	{
-		return m_size < BackupGlobals.maximumChunkSize;
+		return m_size < PeerGlobals.maximumChunkSize;
 	}
 }

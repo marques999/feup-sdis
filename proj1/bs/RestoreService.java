@@ -3,7 +3,8 @@ package bs;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.util.HashMap;
-import java.util.Stack;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import bs.filesystem.Chunk;
 import bs.logging.Logger;
@@ -14,7 +15,7 @@ public class RestoreService extends BaseService
 	/**
 	 * stores binary chunks for the files being restored, key = fileId
 	 */
-	private final HashMap<String, Stack<Chunk>> m_collection = new HashMap<>();
+	private final HashMap<String, LinkedBlockingQueue<Chunk>> m_collection = new HashMap<>();
 
 	/**
 	 * mutex for dealing with concurrent accesses to the chunk collection hashmap
@@ -76,7 +77,11 @@ public class RestoreService extends BaseService
 
 		synchronized (m_collectionLock)
 		{
-			if (m_collection.containsKey(fileId))
+			if (paramMessage.hasEnhancements())
+			{
+				registerMessage(fileId, paramMessage.getChunkId());
+			}
+			else if (m_collection.containsKey(fileId))
 			{
 				registerChunk(paramMessage.generateChunk());
 			}
@@ -147,7 +152,7 @@ public class RestoreService extends BaseService
 		{
 			if (!m_collection.containsKey(fileId))
 			{
-				m_collection.put(fileId, new Stack<Chunk>());
+				m_collection.put(fileId, new LinkedBlockingQueue<Chunk>());
 			}
 		}
 	}
@@ -164,8 +169,7 @@ public class RestoreService extends BaseService
 		{
 			if (m_collection.containsKey(fileId))
 			{
-				m_collection.get(fileId).push(paramChunk);
-				m_collectionLock.notifyAll();
+				m_collection.get(fileId).offer(paramChunk);
 			}
 		}
 	}
@@ -176,14 +180,13 @@ public class RestoreService extends BaseService
 
 		synchronized (m_collectionLock)
 		{
-			if (!m_collection.containsKey(fileId))
+			if (m_collection.containsKey(fileId))
 			{
-				return false;
+				return m_collection.get(fileId).contains(paramChunk);
 			}
-
-			final Stack<Chunk> chunkStack = m_collection.get(fileId);
-			return !chunkStack.isEmpty() && chunkStack.contains(paramChunk);
 		}
+
+		return false;
 	}
 
 	/**
@@ -199,23 +202,18 @@ public class RestoreService extends BaseService
 			{
 				return null;
 			}
-
-			final Stack<Chunk> chunkStack = m_collection.get(fileId);
-
-			while (chunkStack.empty())
-			{
-				try
-				{
-					m_collectionLock.wait();
-				}
-				catch (InterruptedException ex)
-				{
-					ex.printStackTrace();
-				}
-			}
-
-			return chunkStack.pop();
 		}
+
+		try
+		{
+			return m_collection.get(fileId).poll(2 * PeerGlobals.initialWaitingTime, TimeUnit.MILLISECONDS);
+		}
+		catch (InterruptedException ex)
+		{
+			ex.printStackTrace();
+		}
+
+		return null;
 	}
 
 	/**

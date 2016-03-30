@@ -6,88 +6,72 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.Arrays;
 
 import bs.actions.ActionBackup;
 import bs.actions.ActionDelete;
 import bs.actions.ActionReclaim;
 import bs.actions.ActionRestore;
-
 import bs.logging.Logger;
-
 import bs.test.TestStub;
 
 public class InitiatorPeer implements TestStub
 {
-	private static final String messageConnecting = "connecting to rmiregistry server...";
-	private static final String messageConnected = "connected to initiator service, listening for commands!";
-	private static final String messageObjectExists = "remote object already exists, rebinding...";
-	private static final String messageInvalidRemote = "invalid remote object name, value must be greater than zero!";
-	private static final String messageProgramUsage = "BackupSystem <Host> <PeerId> [<McPort> <MdbPort> <MdrPort>]";
-	private static final String messageRemoteException = "could not bind object, is rmiregistry running?";
-	private static final String messageBackupDone = "backup action sucessfully completed!";
-	private static final String messageRestoreDone = "restore action sucessfully completed!";
-	private static final String messageDeleteDone = "file successfully deleted from the network!";
-	private static final String messageReclaimDone = "redundant chunks successfully reclaimed!";
-
 	public static void main(final String[] args) throws IOException
 	{
-		if (!BackupGlobals.checkInitiatorArguments(args.length))
+		if (PeerGlobals.checkArguments(args.length))
 		{
-			Logger.abort(messageProgramUsage);
+			if (Peer.initializePeer(args, true))
+			{
+				initializeInitiator(args);
+			}
 		}
+		else
+		{
+			Logger.logError("invalid number of arguments given, please enter the following:");
+			System.out.println("    (1) InitiatorPeer <PeerId> <Host>");
+			System.out.println("    (2) InitiatorPeer <PeerId> <Host> <McPort> <MdbPort> <MdrPort>");
+			System.out.println("    (3) InitiatorPeer <PeerId> <McHost> <McPort> <MdbHost> <MdbPort> <MdrHost> <MdrPort>");
+			System.exit(1);
+		}
+	}
 
-		String objectName = "1234";
+	private static void initializeInitiator(final String[] args)
+	{
 		Registry registry = null;
+		String objectName = Integer.toString(Peer.getPeerId());
 		TestStub stub = null;
-
-		if (args.length > BackupGlobals.minimumInitArguments)
-		{
-			try
-			{
-				Integer.parseInt(args[0]);
-				objectName = args[0];
-			}
-			catch (NumberFormatException ex)
-			{
-				Logger.abort(messageInvalidRemote);
-			}
-		}
 
 		try
 		{
-			Logger.logDebug("remote object name -> \"" + objectName + "\"");
 			registry = LocateRegistry.getRegistry();
 			stub = (TestStub) UnicastRemoteObject.exportObject(new InitiatorPeer(), 0);
-			Logger.logInformation(messageConnecting);
+			Logger.logInformation(PeerStrings.messageConnecting);
 			registry.bind(objectName, stub);
-			Logger.logInformation(messageConnected);
+			Logger.logInformation(PeerStrings.messageConnected);
 		}
 		catch (AlreadyBoundException ex)
 		{
 			try
 			{
-				Logger.logWarning(messageObjectExists);
+				Logger.logWarning(PeerStrings.messageObjectExists);
 				registry.rebind(objectName, stub);
-				Logger.logInformation(String.format(messageConnected, objectName));
+				Logger.logInformation(String.format(PeerStrings.messageConnected, objectName));
 			}
 			catch (RemoteException exr)
 			{
-				Logger.abort(messageRemoteException);
+				Logger.abort(PeerStrings.messageRemoteException);
 			}
 		}
 		catch (RemoteException ex)
 		{
-			Logger.abort(messageRemoteException);
+			Logger.abort(PeerStrings.messageRemoteException);
 		}
-
-		BackupSystem.initializePeer(Arrays.copyOfRange(args, 1, args.length));
 	}
 
 	@Override
 	public boolean backupFile(final String fileId, int replicationDegree, boolean enableEnhancements) throws RemoteException
 	{
-		BackupSystem.setEnhancements(enableEnhancements);
+		Peer.setEnhancements(enableEnhancements);
 
 		final ActionBackup actionBackup = new ActionBackup(fileId, replicationDegree);
 
@@ -106,7 +90,7 @@ public class InitiatorPeer implements TestStub
 
 		if (threadResult)
 		{
-			Logger.logInformation(messageBackupDone);
+			Logger.logInformation(PeerStrings.messageBackupDone);
 		}
 
 		return threadResult;
@@ -115,7 +99,12 @@ public class InitiatorPeer implements TestStub
 	@Override
 	public boolean restoreFile(final String fileId, boolean enableEnhancements) throws RemoteException
 	{
-		BackupSystem.setEnhancements(enableEnhancements);
+		Peer.setEnhancements(enableEnhancements);
+
+		if (enableEnhancements)
+		{
+			Peer.startUnicast();
+		}
 
 		final ActionRestore actionRestore = new ActionRestore(fileId);
 
@@ -124,6 +113,7 @@ public class InitiatorPeer implements TestStub
 		try
 		{
 			actionRestore.join();
+			Peer.stopUnicast();
 		}
 		catch (InterruptedException ex)
 		{
@@ -134,7 +124,7 @@ public class InitiatorPeer implements TestStub
 
 		if (threadResult)
 		{
-			Logger.logInformation(messageRestoreDone);
+			Logger.logInformation(PeerStrings.messageRestoreDone);
 		}
 
 		return threadResult;
@@ -143,7 +133,7 @@ public class InitiatorPeer implements TestStub
 	@Override
 	public boolean deleteFile(String fileId, boolean enableEnhancements) throws RemoteException
 	{
-		BackupSystem.setEnhancements(enableEnhancements);
+		Peer.setEnhancements(enableEnhancements);
 
 		final ActionDelete actionDelete = new ActionDelete(fileId);
 
@@ -162,7 +152,7 @@ public class InitiatorPeer implements TestStub
 
 		if (threadResult)
 		{
-			Logger.logInformation(messageDeleteDone);
+			Logger.logInformation(PeerStrings.messageDeleteDone);
 		}
 
 		return threadResult;
@@ -171,7 +161,7 @@ public class InitiatorPeer implements TestStub
 	@Override
 	public boolean reclaimSpace(int reclaimAmount, boolean enableEnhancements) throws RemoteException
 	{
-		BackupSystem.setEnhancements(enableEnhancements);
+		Peer.setEnhancements(enableEnhancements);
 
 		final ActionReclaim actionReclaim = new ActionReclaim(reclaimAmount);
 
@@ -190,7 +180,7 @@ public class InitiatorPeer implements TestStub
 
 		if (threadResult)
 		{
-			Logger.logInformation(messageReclaimDone);
+			Logger.logInformation(PeerStrings.messageReclaimDone);
 		}
 
 		return threadResult;

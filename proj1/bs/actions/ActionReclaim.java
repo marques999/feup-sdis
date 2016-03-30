@@ -1,8 +1,8 @@
 package bs.actions;
 
-import bs.BackupGlobals;
+import bs.PeerGlobals;
 import bs.BackupService;
-import bs.BackupSystem;
+import bs.Peer;
 import bs.ControlService;
 import bs.RestoreService;
 import bs.filesystem.Chunk;
@@ -15,7 +15,7 @@ public class ActionReclaim extends Action
 	private final static String messageBackupTimeout = "couldn't reach desired replication degree, trying again...";
 	private final static String messageReclaimFailed = "peers in this network have not stored this chunk!";
 	private final static String messageConfirmations = "%d peers have stored chunk %d";
-		
+
 	public ActionReclaim(long reclaimAmount)
 	{
 		numberBytes = reclaimAmount;
@@ -25,9 +25,9 @@ public class ActionReclaim extends Action
 
 	private void runEnhancement(final Chunk mostReplicated)
 	{
-		final ControlService controlService = BackupSystem.getControlService();
-		final BackupService backupService = BackupSystem.getBackupService();
-		final RestoreService restoreService = BackupSystem.getRestoreService();
+		final ControlService controlService = Peer.getControlService();
+		final BackupService backupService = Peer.getBackupService();
+		final RestoreService restoreService = Peer.getRestoreService();
 		final String fileId = mostReplicated.getFileId();
 
 		// -----------------------------------------------------------------------
@@ -39,50 +39,50 @@ public class ActionReclaim extends Action
 		try
 		{
 			backupService.subscribePutchunk(fileId, chunkId);
-			Thread.sleep(BackupGlobals.initialWaitingTime);
+			Thread.sleep(PeerGlobals.initialWaitingTime);
 		}
 		catch (InterruptedException ex)
 		{
 			ex.printStackTrace();
 		}
 
-		//----------------------------------------------------------------
+		// ----------------------------------------------------------------
 		// STOP LISTENING FOR PUTCHUNK MESSAGES AND RETRIEVE MESSAGE COUNT
-		//----------------------------------------------------------------
+		// ----------------------------------------------------------------
 
 		boolean receivedChunk = true;
 		int numberPutchunkMessages = backupService.unsubscribePutchunk(fileId, chunkId);
 
-		//----------------------------------------------------------------------
+		// ----------------------------------------------------------------------
 		// NO PUTCHUNK RECEIVED, PEERS ARE NOT TRYING TO FIX REPLICATION DEGREE?
-		//----------------------------------------------------------------------
+		// ----------------------------------------------------------------------
 
 		if (numberPutchunkMessages == 0)
 		{
-			//-------------------------------------------------------------------
+			// -------------------------------------------------------------------
 			// REQUEST CHUNK BEING REMOVED AND START LISTENING FOR CHUNK MESSAGES
-			//-------------------------------------------------------------------
+			// -------------------------------------------------------------------
 
 			Logger.logWarning("no putchunk message received, peers are not trying to fix replication degree?");
 			restoreService.startReceivingChunks(fileId);
-			BackupSystem.sendGETCHUNK(fileId, chunkId);
+			Peer.sendGETCHUNK(fileId, chunkId);
 
-			//--------------------------------------------------------------------------
+			// --------------------------------------------------------------------------
 			// WAIT FOR CHUNK MESSAGES FROM OTHER PEERS (INITIAL WAITING TIME: 1 SECOND)
-			//--------------------------------------------------------------------------
+			// --------------------------------------------------------------------------
 
 			try
 			{
-				Thread.sleep(BackupGlobals.initialWaitingTime);
+				Thread.sleep(PeerGlobals.initialWaitingTime);
 			}
 			catch (InterruptedException ex)
 			{
 				ex.printStackTrace();
 			}
 
-			//--------------------------------------------------------------------
+			// --------------------------------------------------------------------
 			// STOP LISTENING FOR CHUNK MESSAGES FOR THIS CHUNK AND RETRIEVE COUNT
-			//--------------------------------------------------------------------
+			// --------------------------------------------------------------------
 
 			receivedChunk = restoreService.hasReceivedChunk(mostReplicated);
 			restoreService.stopReceivingChunks(fileId);
@@ -118,14 +118,14 @@ public class ActionReclaim extends Action
 		Logger.logDebug("replication degree is less than desired, attempting to fix it...");
 		controlService.subscribeConfirmations(myChunk);
 
-		int waitingTime = BackupGlobals.initialWaitingTime;
+		int waitingTime = PeerGlobals.initialWaitingTime;
 		boolean actionDone = false;
 
 		//--------------------------------------------------------------------
 		// REPEAT THIS BLOCK 5 TIMES, DOUBLING THE WAITING TIME ON EVERY RETRY
 		//--------------------------------------------------------------------
 
-		for (int i = 1; i <= BackupGlobals.maximumAttempts; i++)
+		for (int i = 1; i <= PeerGlobals.maximumAttempts; i++)
 		{
 			//---------------------------------------------------------------------
 			// START LISTENING FOR STORED MESSAGES (INITIAL WAITING TIME: 1 SECOND)
@@ -164,7 +164,7 @@ public class ActionReclaim extends Action
 			// START CHUNK BACKUP PROTOCOL IF MAXIMUM ATTEMPTS REACHED
 			//--------------------------------------------------------
 
-			if (i == BackupGlobals.maximumAttempts)
+			if (i == PeerGlobals.maximumAttempts)
 			{
 				Logger.logWarning(messageReclaimFailed);
 				Logger.logWarning(messageStartingBackup);
@@ -209,7 +209,6 @@ public class ActionReclaim extends Action
 		}
 
 		int bytesFreed = 0;
-		boolean enhancementsEnabled = BackupSystem.enhancementsEnabled();
 
 		while (bytesFreed < numberBytes && actionResult)
 		{
@@ -225,17 +224,17 @@ public class ActionReclaim extends Action
 				final int chunkId = mostReplicated.getChunkId();
 
 				//------------------------------------
-				// SEND REMOVED MESSAGE TO OTHER PEERS		
-				//------------------------------------	
+				// SEND REMOVED MESSAGE TO OTHER PEERS
+				//------------------------------------
 
 				bsdbInstance.registerReclaim(mostReplicated);
-				BackupSystem.sendREMOVED(fileId, chunkId);
+				Peer.sendREMOVED(fileId, chunkId);
 
 				//----------------------------------------------------------------------
 				// IF PEER ENHANCEMENTS ARE ENABLED, RUN RECLAIM SUBPROTOCOL ENHANCEMENT
 				//----------------------------------------------------------------------
 
-				if (enhancementsEnabled)
+				if (Peer.enhancementsEnabled())
 				{
 					runEnhancement(mostReplicated);
 				}
@@ -243,7 +242,7 @@ public class ActionReclaim extends Action
 				{
 					try
 					{
-						Thread.sleep(BackupGlobals.initialWaitingTime);
+						Thread.sleep(PeerGlobals.initialWaitingTime);
 					}
 					catch (InterruptedException ex)
 					{

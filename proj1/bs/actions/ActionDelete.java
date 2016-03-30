@@ -1,7 +1,7 @@
 package bs.actions;
 
-import bs.BackupGlobals;
-import bs.BackupSystem;
+import bs.PeerGlobals;
+import bs.Peer;
 import bs.filesystem.FileInformation;
 import bs.logging.Logger;
 
@@ -33,13 +33,13 @@ public class ActionDelete extends Action
 				{
 					Logger.logDebug("file was previously backed up by some peers in this network.");
 
-					for (int i = 0; i < BackupGlobals.maximumAttempts; i++)
+					for (int i = 0; i < PeerGlobals.maximumAttempts; i++)
 					{
-						BackupSystem.sendDELETE(restoreInformation.getFileId());
+						Peer.sendDELETE(restoreInformation.getFileId());
 
 						try
 						{
-							Thread.sleep(BackupGlobals.maximumBackoffTime);
+							Thread.sleep(PeerGlobals.maximumBackoffTime);
 						}
 						catch (InterruptedException ex)
 						{

@@ -2,20 +2,20 @@ package bs.actions;
 
 import java.util.Random;
 
-import bs.BackupGlobals;
-import bs.BackupSystem;
+import bs.PeerGlobals;
+import bs.Peer;
 import bs.filesystem.BackupStorage;
 import bs.filesystem.FileManager;
 
 public abstract class Action extends Thread
 {
-	protected final BackupStorage bsdbInstance = BackupSystem.getStorage();
-	protected final FileManager fmInstance = BackupSystem.getFiles();
-	private final Random myRandom = new Random();
+	protected final BackupStorage bsdbInstance = Peer.getStorage();
+	protected final FileManager fmInstance = Peer.getFiles();
+	protected final Random myRandom = new Random();
 
-	protected final int generateBackoff()
+	protected int generateBackoff()
 	{
-		return myRandom.nextInt(BackupGlobals.maximumBackoffTime);
+		return myRandom.nextInt(PeerGlobals.maximumBackoffTime);
 	}
 
 	protected boolean actionResult = false;

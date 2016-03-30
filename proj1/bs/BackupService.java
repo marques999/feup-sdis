@@ -68,7 +68,7 @@ public class BackupService extends BaseService
 		int chunkId = paramMessage.getChunkId();
 		int replicationDegree = paramMessage.getDegree();
 		byte[] messageBody = paramMessage.getBody();
-		boolean enhancementsEnabled = BackupSystem.enhancementsEnabled();
+		boolean enhancementsEnabled = paramMessage.getVersion().equals("2.0");
 		boolean chunkExists = false;
 
 		if (bsdbInstance.chunkWasReclaimed(fileId, chunkId))
@@ -120,7 +120,7 @@ public class BackupService extends BaseService
 			}
 
 			final Chunk myChunk = paramMessage.generateChunk();
-			final ControlService svcControl = BackupSystem.getControlService();
+			final ControlService svcControl = Peer.getControlService();
 
 			// ------------------------------------------------------------------------------
 			// IF PEER ALREADY HAS THIS CHUNK, SEND "STORED" CONFIRMATION TO REMAINING PEERS
@@ -128,7 +128,7 @@ public class BackupService extends BaseService
 
 			if (chunkExists)
 			{
-				BackupSystem.sendSTORED(myChunk);
+				Peer.sendSTORED(myChunk);
 			}
 			else
 			{
@@ -138,14 +138,14 @@ public class BackupService extends BaseService
 
 				if (enhancementsEnabled)
 				{
-					bsdbInstance.registerTemporaryChunk(myChunk);			
+					bsdbInstance.registerTemporaryChunk(myChunk);
 				}
 				else
 				{
 					Logger.logDebug("saving chunk " + chunkId + " to storage...");
 					fmInstance.writeChunk(myChunk);
 				}
-				
+
 				svcControl.subscribeConfirmations(myChunk);
 
 				try
@@ -168,7 +168,7 @@ public class BackupService extends BaseService
 					if (numberConfirmations < replicationDegree)
 					{
 						Logger.logDebug("received " + numberConfirmations + " confirmations for chunk " + chunkId);
-						BackupSystem.sendSTORED(myChunk);
+						Peer.sendSTORED(myChunk);
 						Logger.logDebug("saving chunk " + chunkId + " to storage...");
 						fmInstance.writeChunk(myChunk);
 					}
@@ -180,7 +180,7 @@ public class BackupService extends BaseService
 				else
 				{
 					Logger.logDebug("received " + numberConfirmations + " confirmations for chunk " + chunkId);
-					BackupSystem.sendSTORED(myChunk);
+					Peer.sendSTORED(myChunk);
 				}
 
 				// ---------------------------------------------------------
