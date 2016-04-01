@@ -10,68 +10,70 @@ public class ChunkInformation implements Serializable
 
 	public ChunkInformation(final Chunk paramChunk, final boolean paramLocal)
 	{
-		m_degree = paramChunk.getReplicationDegree();
-		m_size = paramChunk.getLength();
-		m_peers = new HashSet<Integer>();
-		m_local = paramLocal;
+		localFile = paramLocal;
+		chunkSize = paramChunk.getLength();
+		remotePeers = new HashSet<Integer>();
+		replicationDegree = paramChunk.getReplicationDegree();
 	}
 
 	public final String toString(int chunkId)
 	{
-		return String.format("| %8d | %10d bytes | %2d / %2d |\n", chunkId, m_size, getCount(), m_degree);
+		return String.format("| %8d | %10d bytes | %2d / %2d |\n", chunkId, chunkSize, getCount(), replicationDegree);
 	}
 
 	//-----------------------------------------------------
 
-	private final int m_degree;
+	private final int replicationDegree;
 
 	public final int getReplicationDegree()
 	{
-		return m_degree;
+		return replicationDegree;
 	}
 
 	//-----------------------------------------------------
 
-	private final long m_size;
+	private final long chunkSize;
 
 	public final long getLength()
 	{
-		return m_size;
+		return chunkSize;
 	}
 
 	//-----------------------------------------------------
 
-	private final Set<Integer> m_peers;
+	private final Set<Integer> remotePeers;
 
 	public final int getCount()
 	{
-		return m_peers.size();
+		return remotePeers.size();
+	}
+
+	public final Set<Integer> getPeers()
+	{
+		return remotePeers;
 	}
 
 	public final void removePeer(int peerId)
 	{
-		m_peers.remove(peerId);
+		remotePeers.remove(peerId);
 	}
 
 	public final void registerPeer(int peerId)
 	{
-		m_peers.add(peerId);
+		remotePeers.add(peerId);
 	}
 
-	private boolean m_local;
+	//-----------------------------------------------------
+
+	private boolean localFile;
 
 	public final void setLocal()
 	{
-		m_local = true;
+		localFile = true;
 	}
 
-	public final void setRemote()
+	public final boolean isTemporary()
 	{
-		m_local = false;
-	}
-
-	public final boolean isRemote()
-	{
-		return !m_local;
+		return !localFile;
 	}
 }

@@ -7,7 +7,7 @@ public class Logger
 	private static final String fmtPayload = "[%s()] :: dumping payload contents...\n";
 	private static final String fmtHeader = "[%s()] :: dumping message header...\n";
 	private static final String msgIssueChunkCommand = "--[DEBUG]-- sending %s for chunk with id=%d\n";
-	private static final String msgIssueFileCommand = "--[DEBUG]-- requesting %s...\n";
+	private static final String msgIssueFileCommand = "--[DEBUG]-- sending %s...\n";
 
 	public static void dumpPayload(final String paramFunction, final Message paramMessage)
 	{

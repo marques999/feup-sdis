@@ -4,7 +4,6 @@ import java.io.IOException;
 
 import bs.filesystem.Chunk;
 import bs.filesystem.ChunkBackup;
-import bs.filesystem.FileInformation;
 import bs.logging.Logger;
 
 public class ActionBackup extends Action
@@ -48,17 +47,16 @@ public class ActionBackup extends Action
 	@Override
 	public void run()
 	{
-		final FileInformation restoreInformation = bsdbInstance.getRestoreInformation(fileName);
-
-		if (restoreInformation == null)
-		{
+		if (bsdbInstance.canBackup(fileName))
+		{		
 			try
 			{
 				final ChunkBackup chunkBackup = new ChunkBackup(fileName, replicationDegree);
 
 				if (sendChunks(chunkBackup))
 				{
-					actionResult = bsdbInstance.registerRestore(chunkBackup);
+					bsdbInstance.registerRestore(chunkBackup);
+					actionResult = true;
 				}
 				else
 				{

@@ -7,13 +7,13 @@ import java.net.MulticastSocket;
 
 import bs.logging.Logger;
 
-public class MulticastConnection
+public class Connection
 {
 	private static final String msgConnected = "%s forwarding messages to %s:%d";
 	private static final String msgListening = "%s listening at %s:%d";
 	private static final String msgConnectionError = "%s: offline (connection problem)!";
 
-	public MulticastConnection(final String paramName, final InetAddress paramAddress, int paramPort, boolean paramListen)
+	public Connection(final String paramName, final InetAddress paramAddress, int paramPort, boolean paramListen)
 	{
 		m_host = paramAddress;
 		m_port = paramPort;

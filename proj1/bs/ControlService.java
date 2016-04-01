@@ -14,16 +14,6 @@ import bs.protocol.GenericMessage;
 public class ControlService extends BaseService
 {
 	/**
-	 * stores received STORED messages from other peers, key = (fileId, chunkId)
-	 */
-	private final HashMap<Integer, Set<Integer>> confirmationsArray = new HashMap<>();
-
-	/**
-	 * mutex for dealing with concurrent accesses to the confirmations array
-	 */
-	private final Object confirmationsLock = new Object();
-
-	/**
 	 * @brief default constructor for 'ControlService' class
 	 * @param paramAddress address of the multicast control channel
 	 * @param paramPort port of the multicast control channel
@@ -41,6 +31,11 @@ public class ControlService extends BaseService
 	@Override
 	protected void processMessage(final GenericMessage paramMessage, final DatagramPacket paramPacket, boolean hasPayload)
 	{
+		if (paramMessage.hasEnhancements() && !Peer.enhancementsEnabled())
+		{
+			return;
+		}
+
 		if (hasPayload)
 		{
 			Logger.logError("control service received an invalid message!");
@@ -51,10 +46,6 @@ public class ControlService extends BaseService
 			{
 				processSTORED(paramMessage);
 			}
-			else if (paramMessage.getType().equals("DELETE"))
-			{
-				processDELETE(paramMessage);
-			}
 			else if (paramMessage.getType().equals("GETCHUNK"))
 			{
 				processGETCHUNK(paramMessage, paramPacket);
@@ -62,6 +53,14 @@ public class ControlService extends BaseService
 			else if (paramMessage.getType().equals("REMOVED"))
 			{
 				processREMOVED(paramMessage);
+			}
+			else if (paramMessage.getType().equals("DELETE"))
+			{
+				processDELETE(paramMessage);
+			}
+			else if (paramMessage.getType().equals("DELETED"))
+			{
+				processDELETED(paramMessage);
 			}
 			else
 			{
@@ -76,18 +75,17 @@ public class ControlService extends BaseService
 	 */
 	private void processSTORED(final GenericMessage paramMessage)
 	{
-		int peerId = paramMessage.getPeerId();
-		int chunkId = paramMessage.getChunkId();
-
-		/*
-		 * if this peer requested the backup, update the number of received STOREDs (replication degree).
-		 */
-		registerConfirmation(paramMessage.getFileId(), chunkId, peerId);
-
-		/*
-		 * if this peer is backing up this chunk, save the other peers which are also backing it up.
-		 */
-		bsdbInstance.registerPeer(paramMessage.getFileId(), chunkId, peerId);
+		registerConfirmation(paramMessage.getFileId(), paramMessage.getChunkId(), paramMessage.getPeerId());
+		bsdbInstance.registerPeer(paramMessage.getFileId(), paramMessage.getChunkId(), paramMessage.getPeerId());
+	}
+	
+	/**
+	 * @brief processes a DELETED message sent to the control service
+	 * @param paramMessage contents of the received message
+	 */
+	private void processDELETED(final GenericMessage paramMessage)
+	{
+		bsdbInstance.removeRemotePeer(paramMessage.getFileId(), paramMessage.getPeerId());
 	}
 
 	/**
@@ -98,43 +96,46 @@ public class ControlService extends BaseService
 	{
 		final String fileId = paramMessage.getFileId();
 		final int chunkId = paramMessage.getChunkId();
+		final int peerId = paramMessage.getPeerId();
 
-		// ------------------------------------------------
+		//-------------------------------------------------
 		// CHECK IF PEER IS CURRENTLY BACKING UP THIS CHUNK
-		// ------------------------------------------------
+		//-------------------------------------------------
 
+		bsdbInstance.removeRemotePeer(fileId, chunkId, peerId);
+		
 		if (!bsdbInstance.hasLocalChunk(fileId, chunkId))
 		{
 			return;
 		}
 
-		// -------------------------------------------------
+		//--------------------------------------------------
 		// UPDATE LOCAL COUNT OF PEERS BACKING UP THIS CHUNK
-		// -------------------------------------------------
+		//--------------------------------------------------
 
-		bsdbInstance.removePeer(fileId, chunkId, paramMessage.getPeerId());
+		bsdbInstance.removePeer(fileId, chunkId, peerId);
 	
 		int currentReplicationDegree = bsdbInstance.getPeerCount(fileId, chunkId);
 		int desiredReplicationDegree = bsdbInstance.getReplicationDegree(fileId, chunkId);
 
 		final BackupService backupService = Peer.getBackupService();
 
-		// --------------------------------------------------------
+		//---------------------------------------------------------
 		// IF PEER COUNT DROPS BELOW THE DESIRED REPLICATION DEGREE
-		// --------------------------------------------------------
+		//---------------------------------------------------------
 
 		if (currentReplicationDegree < desiredReplicationDegree)
 		{
-			// ----------------------------------------------------
+			//-----------------------------------------------------
 			// START LISTENING FOR PUTCHUNK MESSAGES FOR THIS CHUNK
-			// ----------------------------------------------------
+			//-----------------------------------------------------
 
-			Logger.logWarning("chunk " + chunkId + " replication degree is lower than desired, attempting to fix...");
+			Logger.logWarning("replication degree is lower than desired, attempting to fix...");
 			backupService.subscribePutchunk(fileId, chunkId);
 
-			// --------------------------------------------------------------------
+			//---------------------------------------------------------------------
 			// WAIT FOR A RANDOM INTERVAL UNIFORMLY DISTRIBUTED BETWEEN 0 AND 400MS
-			// --------------------------------------------------------------------
+			//---------------------------------------------------------------------
 
 			try
 			{
@@ -145,25 +146,25 @@ public class ControlService extends BaseService
 				ex.printStackTrace();
 			}
 
-			// ----------------------------------------------------------------------
+			//-----------------------------------------------------------------------
 			// STOP LISTENING FOR PUTCHUNK MESSAGES FOR THIS CHUNK AND RETRIEVE COUNT
-			// ----------------------------------------------------------------------
+			//-----------------------------------------------------------------------
 
 			int numberPutchunkMessages = backupService.unsubscribePutchunk(fileId, chunkId);
 
-			// -----------------------------------------------------
+			//------------------------------------------------------
 			// IF A PUTCHUNK MESSAGE HAS NOT BEEN RECEIVED MEANWHILE
-			// -----------------------------------------------------
+			//------------------------------------------------------
 
 			if (numberPutchunkMessages == 0)
 			{
 				final Chunk myChunk = fmInstance.readChunk(fileId, chunkId);
 				
-				Logger.logWarning("no putchunk messages received, starting chunk " + chunkId + " backup!");
+				Logger.logWarning("no putchunk messages received, starting chunk backup!");
 
-				// -----------------------------------------------
-				// IF CHUNK EXISTS, START CHUNK BACKUP SUBPROTOCOL
-				// -----------------------------------------------
+				//-------------------------------
+				// START CHUNK BACKUP SUBPROTOCOL
+				//-------------------------------
 
 				if (myChunk != null)
 				{
@@ -176,7 +177,7 @@ public class ControlService extends BaseService
 			}
 			else
 			{
-				Logger.logDebug("received " + numberPutchunkMessages + " putchunk messages, moving on...");
+				Logger.logDebug("received " + numberPutchunkMessages + " \"putchunk\" messages, moving on...");
 			}
 		}
 	}
@@ -244,8 +245,24 @@ public class ControlService extends BaseService
 	 */
 	public void processDELETE(final GenericMessage paramMessage)
 	{
-		bsdbInstance.removeFile(paramMessage.getFileId());
+		if (bsdbInstance.removeChunks(paramMessage.getFileId()))
+		{
+			if (paramMessage.hasEnhancements())
+			{
+				Peer.sendDELETED2_0(paramMessage.getFileId());
+			}
+		}
 	}
+
+	/**
+	 * stores received STORED messages from other peers, key = (fileId, chunkId)
+	 */
+	private final HashMap<Integer, Set<Integer>> confirmationsArray = new HashMap<>();
+
+	/**
+	 * mutex for dealing with concurrent accesses to the confirmations array
+	 */
+	private final Object confirmationsLock = new Object();
 
 	/**
 	 * @brief starts listening for peer confirmations for the current chunk
@@ -261,6 +278,16 @@ public class ControlService extends BaseService
 			{
 				confirmationsArray.put(generatedHash, new HashSet<Integer>());
 			}
+		}
+	}
+
+	public void setPeerConfirmations(final Chunk paramChunk, final Set<Integer> paramPeers)
+	{
+		int generatedHash = calculateHash(paramChunk.getFileId(), paramChunk.getChunkId());
+
+		synchronized (confirmationsLock)
+		{
+			confirmationsArray.put(generatedHash,paramPeers);
 		}
 	}
 
@@ -285,7 +312,7 @@ public class ControlService extends BaseService
 	 * @brief retrieves number of received confirmations for the current chunk
 	 * @param paramChunk binary chunk of the file being backed up
 	 */
-	public int getPeerConfirmations(final Chunk paramChunk)
+	public Set<Integer> getPeerConfirmations(final Chunk paramChunk)
 	{
 		int generatedHash = calculateHash(paramChunk.getFileId(), paramChunk.getChunkId());
 
@@ -293,11 +320,11 @@ public class ControlService extends BaseService
 		{
 			if (confirmationsArray.containsKey(generatedHash))
 			{
-				return confirmationsArray.get(generatedHash).size();
+				return confirmationsArray.get(generatedHash);
 			}
 		}
 
-		return 0;
+		return null;
 	}
 
 	/**

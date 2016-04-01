@@ -40,6 +40,11 @@ public class BackupService extends BaseService
 	@Override
 	protected final void processMessage(final GenericMessage paramMessage, final DatagramPacket paramPacket, boolean hasPayload)
 	{
+		if (paramMessage.hasEnhancements() && !Peer.enhancementsEnabled())
+		{
+			return;
+		}
+
 		if (paramMessage.getType().equals("PUTCHUNK"))
 		{
 			if (hasPayload)
@@ -68,7 +73,6 @@ public class BackupService extends BaseService
 		int chunkId = paramMessage.getChunkId();
 		int replicationDegree = paramMessage.getDegree();
 		byte[] messageBody = paramMessage.getBody();
-		boolean enhancementsEnabled = paramMessage.getVersion().equals("2.0");
 		boolean chunkExists = false;
 
 		if (bsdbInstance.chunkWasReclaimed(fileId, chunkId))
@@ -136,7 +140,7 @@ public class BackupService extends BaseService
 				// START LISTENING FOR "STORED" CONFIRMATIONS FOR THIS CHUNK
 				// ----------------------------------------------------------
 
-				if (enhancementsEnabled)
+				if (Peer.enhancementsEnabled())
 				{
 					bsdbInstance.registerTemporaryChunk(myChunk);
 				}
@@ -157,13 +161,13 @@ public class BackupService extends BaseService
 					ex.printStackTrace();
 				}
 
-				int numberConfirmations = svcControl.getPeerConfirmations(myChunk);
+				int numberConfirmations = svcControl.getPeerConfirmations(myChunk).size();
 
 				//-------------------------------------------------
 				// WAIT FOR "STORED" CONFIRMATIONS FROM OTHER PEERS
 				//-------------------------------------------------
 
-				if (enhancementsEnabled)
+				if (Peer.enhancementsEnabled())
 				{
 					if (numberConfirmations < replicationDegree)
 					{
@@ -174,7 +178,7 @@ public class BackupService extends BaseService
 					}
 					else
 					{
-						bsdbInstance.removeChunk(fileId, chunkId);
+						bsdbInstance.unregisterChunk(fileId, chunkId);
 					}
 				}
 				else

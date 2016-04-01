@@ -10,11 +10,12 @@ import bs.logging.Logger;
 
 public class ActionReclaim extends Action
 {
+	private static final String messageNoPutchunk = "no putchunk message received, peers are not trying to fix replication degree?";
 	private static final String messageStartingBackup = "starting chunk backup before removing this chunk...";
 	private final static String messageWaiting = "waiting for peer confirmations, attempt %d of 5...";
 	private final static String messageBackupTimeout = "couldn't reach desired replication degree, trying again...";
 	private final static String messageReclaimFailed = "peers in this network have not stored this chunk!";
-	private final static String messageConfirmations = "%d peers have stored chunk %d";
+	private final static String messageConfirmations = "received %d confirmations (desired repliation degree is %d)";
 
 	public ActionReclaim(long reclaimAmount)
 	{
@@ -63,7 +64,7 @@ public class ActionReclaim extends Action
 			// REQUEST CHUNK BEING REMOVED AND START LISTENING FOR CHUNK MESSAGES
 			// -------------------------------------------------------------------
 
-			Logger.logWarning("no putchunk message received, peers are not trying to fix replication degree?");
+			Logger.logWarning(messageNoPutchunk);
 			restoreService.startReceivingChunks(fileId);
 			Peer.sendGETCHUNK(fileId, chunkId);
 
@@ -87,9 +88,9 @@ public class ActionReclaim extends Action
 			receivedChunk = restoreService.hasReceivedChunk(mostReplicated);
 			restoreService.stopReceivingChunks(fileId);
 
-			if (receivedChunk)
+			if (!receivedChunk)
 			{
-				Logger.logDebug("chunk " + chunkId + " was received on the restore protocol!");
+				Logger.logWarning("replication degree is still lower than desired, forcing backup...");
 			}
 		}
 		else
@@ -104,8 +105,6 @@ public class ActionReclaim extends Action
 
 		if (numberPutchunkMessages > 0 || !receivedChunk)
 		{
-			Logger.logWarning("replication degree is still lower than expected, forcing backup...");
-
 			if (!forceBackup(mostReplicated, controlService))
 			{
 				Logger.logError("reclaim attempt failed!");
@@ -115,11 +114,10 @@ public class ActionReclaim extends Action
 
 	private boolean forceBackup(final Chunk myChunk, final ControlService controlService)
 	{
-		Logger.logDebug("replication degree is less than desired, attempting to fix it...");
-		controlService.subscribeConfirmations(myChunk);
-
 		int waitingTime = PeerGlobals.initialWaitingTime;
 		boolean actionDone = false;
+		
+		controlService.subscribeConfirmations(myChunk);
 
 		//--------------------------------------------------------------------
 		// REPEAT THIS BLOCK 5 TIMES, DOUBLING THE WAITING TIME ON EVERY RETRY
@@ -145,15 +143,15 @@ public class ActionReclaim extends Action
 			// RETRIEVE "STORED" MESSAGE COUNT FOR THIS CHUNK
 			//-----------------------------------------------
 
-			int numberConfirmations = controlService.getPeerConfirmations(myChunk);
+			int numberConfirmations = controlService.getPeerConfirmations(myChunk).size();
 
-			Logger.logDebug(String.format(messageConfirmations, numberConfirmations, myChunk.getChunkId()));
+			Logger.logDebug(String.format(messageConfirmations, numberConfirmations, myChunk.getReplicationDegree()));
 
 			//-------------------------------------------------------------------
 			// ONLY DELETE THIS CHUNK AFTER RECEIVING AT LEAST ONE STORED MESSAGE
 			//-------------------------------------------------------------------
 
-			actionDone = numberConfirmations > 0;
+			actionDone = (numberConfirmations == myChunk.getReplicationDegree());
 
 			if (actionDone)
 			{
@@ -169,7 +167,7 @@ public class ActionReclaim extends Action
 				Logger.logWarning(messageReclaimFailed);
 				Logger.logWarning(messageStartingBackup);
 
-				final BackupHelper backupHelper = new BackupHelper(myChunk, true);
+				final BackupHelper backupHelper = new BackupHelper(myChunk, false);
 
 				backupHelper.start();
 
@@ -256,7 +254,7 @@ public class ActionReclaim extends Action
 
 				if (fmInstance.deleteChunk(fileId, chunkId))
 				{
-					bytesFreed += bsdbInstance.removeChunk(fileId, chunkId);
+					bytesFreed += bsdbInstance.unregisterChunk(fileId, chunkId);
 					Logger.logDebug(bytesFreed + " bytes removed, requested amount:" + numberBytes + " bytes...");
 				}
 				else

@@ -86,6 +86,11 @@ public class Chunk implements Serializable
 	{
 		return m_size;
 	}
+	
+	public final boolean isLast()
+	{
+		return m_size < PeerGlobals.maximumChunkSize;
+	}
 
 	//-----------------------------------------------------
 
@@ -99,10 +104,5 @@ public class Chunk implements Serializable
 	public final boolean isFirst()
 	{
 		return m_chunkId == 0;
-	}
-
-	public final boolean isLast()
-	{
-		return m_size < PeerGlobals.maximumChunkSize;
 	}
 }

@@ -71,7 +71,7 @@ public class GenericMessage
 	
 	public final boolean hasEnhancements()
 	{
-		return m_version.equals("2.0");
+		return !m_version.equals("1.0");
 	}
 
 	/*

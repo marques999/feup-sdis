@@ -12,43 +12,43 @@ public class ChunkCollection implements Serializable
 
 	public ChunkCollection()
 	{
-		m_fileChunks = new HashMap<Integer, ChunkInformation>();
-		m_size = 0;
+		fileChunks = new HashMap<Integer, ChunkInformation>();
+		fileSize = 0;
 	}
 
 	// -----------------------------------------------------
 
-	private long m_size;
+	private long fileSize;
 
 	public final long getSize()
 	{
-		return m_size;
+		return fileSize;
 	}
 
 	// -----------------------------------------------------
 
-	private final HashMap<Integer, ChunkInformation> m_fileChunks;
+	private final HashMap<Integer, ChunkInformation> fileChunks;
 
-	public final HashMap<Integer, ChunkInformation> getChunks()
+	public final HashMap<Integer, ChunkInformation> getLocalChunks()
 	{
-		return m_fileChunks;
+		return fileChunks;
 	}
 
 	public final Integer[] getChunkIds()
 	{
-		if (m_fileChunks.isEmpty())
+		if (fileChunks.isEmpty())
 		{
 			return new Integer[] {};
 		}
 
 		int i = 0;
 
-		final Integer[] chunkIds = new Integer[m_fileChunks.size()];
-		final Set<Integer> chunkSet = m_fileChunks.keySet();
+		final Integer[] chunkIds = new Integer[fileChunks.size()];
+		final Set<Integer> chunkSet = fileChunks.keySet();
 
 		for (final Integer chunkId : chunkSet)
 		{
-			if (!m_fileChunks.get(chunkId).isRemote())
+			if (!fileChunks.get(chunkId).isTemporary())
 			{
 				chunkIds[i++] = chunkId;
 			}
@@ -59,51 +59,48 @@ public class ChunkCollection implements Serializable
 
 	public final int getNumberChunks()
 	{
-		return m_fileChunks.size();
+		return fileChunks.size();
 	}
 
 	public final boolean isEmpty()
 	{
-		return m_fileChunks.isEmpty();
+		return fileChunks.isEmpty();
 	}
 
 	// -----------------------------------------------------
 
 	public final ChunkInformation getChunkInformation(int chunkId)
 	{
-		if (m_fileChunks.containsKey(chunkId))
+		if (fileChunks.containsKey(chunkId))
 		{
-			return m_fileChunks.get(chunkId);
+			return fileChunks.get(chunkId);
 		}
 
 		return null;
 	}
 
-	/**
-	 * @brief removes a chunk from this collection
-	 * @param chunkId chunk identifier number
-	 */
-	public final long removeChunk(int chunkId)
+	public final long removeLocalChunk(int chunkId)
 	{
 		long chunkSize = 0;
 
-		if (m_fileChunks.containsKey(chunkId))
+		if (fileChunks.containsKey(chunkId))
 		{
-			final ChunkInformation chunkInformation = m_fileChunks.get(chunkId);
+			final ChunkInformation chunkInformation = fileChunks.get(chunkId);
 
-			if (chunkInformation.isRemote())
+			if (chunkInformation.isTemporary())
 			{
-				m_fileChunks.remove(chunkId);
+				fileChunks.remove(chunkId);
 			}
 			else
 			{
-				chunkSize = m_fileChunks.remove(chunkId).getLength();
-				m_size -= chunkSize;
+				chunkSize = fileChunks.remove(chunkId).getLength();
+				fileSize -= chunkSize;
 			}
 		}
 
 		return chunkSize;
 	}
+
 
 	/**
 	 * @brief decreases the replication count of a chunk
@@ -111,28 +108,28 @@ public class ChunkCollection implements Serializable
 	 */
 	public final boolean removePeer(int chunkId, int peerId)
 	{
-		if (!m_fileChunks.containsKey(chunkId))
+		if (!fileChunks.containsKey(chunkId))
 		{
 			return false;
 		}
 		
-		m_fileChunks.get(chunkId).removePeer(peerId);
+		fileChunks.get(chunkId).removePeer(peerId);
 		
 		return true;
 	}
-
+	
 	/**
-	 * @brief increases the replication count of a chunk
+	 * @brief increases the replication count of a received chunk
 	 * @param chunkId chunk identifier number
 	 */
 	public final boolean registerPeer(int chunkId, int peerId)
 	{
-		if (!m_fileChunks.containsKey(chunkId))
+		if (!fileChunks.containsKey(chunkId))
 		{
 			return false;
 		}
 		
-		m_fileChunks.get(chunkId).registerPeer(peerId);
+		fileChunks.get(chunkId).registerPeer(peerId);
 		
 		return true;
 	}
@@ -143,7 +140,7 @@ public class ChunkCollection implements Serializable
 	 */
 	public final boolean localChunkExists(int chunkId)
 	{
-		return m_fileChunks.containsKey(chunkId) && !m_fileChunks.get(chunkId).isRemote();
+		return fileChunks.containsKey(chunkId) && !fileChunks.get(chunkId).isTemporary();
 	}
 
 	/**
@@ -155,16 +152,16 @@ public class ChunkCollection implements Serializable
 		int chunkId = chunk.getChunkId();
 		long deltaSpace = 0;
 
-		if (m_fileChunks.containsKey(chunkId))
+		if (fileChunks.containsKey(chunkId))
 		{
-			final ChunkInformation chunkInformation = m_fileChunks.get(chunkId);
+			final ChunkInformation chunkInformation = fileChunks.get(chunkId);
 
-			if (chunkInformation.isRemote() && localChunk)
+			if (chunkInformation.isTemporary() && localChunk)
 			{
 				chunkInformation.setLocal();
 				deltaSpace = chunkInformation.getLength();
 				registerPeer(chunkId, Peer.getPeerId());
-				m_size += deltaSpace;
+				fileSize += deltaSpace;
 			}
 			else
 			{
@@ -173,13 +170,13 @@ public class ChunkCollection implements Serializable
 		}
 		else
 		{
-			m_fileChunks.put(chunkId, new ChunkInformation(chunk, localChunk));
+			fileChunks.put(chunkId, new ChunkInformation(chunk, localChunk));
 
 			if (localChunk)
 			{
 				deltaSpace = chunk.getLength();
 				registerPeer(chunkId, Peer.getPeerId());
-				m_size += chunk.getLength();
+				fileSize += chunk.getLength();
 			}
 		}
 
@@ -195,7 +192,7 @@ public class ChunkCollection implements Serializable
 		sb.append(" |\n+----------+------------------+------------------------------------+\n");
 		sb.append("| ChunkId  | Length           | Degree  |\n");
 		sb.append("+----------+------------------+---------+\n");
-		m_fileChunks.forEach((chunkId, chunkInformation) -> {
+		fileChunks.forEach((chunkId, chunkInformation) -> {
 			sb.append(chunkInformation.toString(chunkId));
 		});
 		sb.append("+----------+------------------+---------+\n");

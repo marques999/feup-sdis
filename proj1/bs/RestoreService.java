@@ -13,26 +13,6 @@ import bs.protocol.GenericMessage;
 public class RestoreService extends BaseService
 {
 	/**
-	 * stores binary chunks for the files being restored, key = fileId
-	 */
-	private final HashMap<String, LinkedBlockingQueue<Chunk>> m_collection = new HashMap<>();
-
-	/**
-	 * mutex for dealing with concurrent accesses to the chunk collection hashmap
-	 */
-	private final Object m_collectionLock = new Object();
-
-	/**
-	 * stores received CHUNK messages from other peers, key = (fileId, chunkId)
-	 */
-	private final HashMap<Integer, Boolean> m_received = new HashMap<>();
-
-	/**
-	 * mutex for dealing with concurrent accesses to the received messages hashmap
-	 */
-	private final Object m_receivedLock = new Object();
-
-	/**
 	 * @brief default constructor for 'RestoreService' class
 	 * @param paramAddress address of the multicast restore channel
 	 * @param paramPort port of the multicast restore channel
@@ -50,6 +30,11 @@ public class RestoreService extends BaseService
 	@Override
 	protected void processMessage(final GenericMessage paramMessage, final DatagramPacket paramPacket, boolean hasPayload)
 	{
+		if (paramMessage.hasEnhancements() && !Peer.enhancementsEnabled())
+		{
+			return;
+		}
+
 		if (paramMessage.getType().equals("CHUNK"))
 		{
 			if (hasPayload)
@@ -75,22 +60,29 @@ public class RestoreService extends BaseService
 	{
 		final String fileId = paramMessage.getFileId();
 
-		synchronized (m_collectionLock)
+		if (paramMessage.hasEnhancements())
 		{
-			if (paramMessage.hasEnhancements())
-			{
-				registerMessage(fileId, paramMessage.getChunkId());
-			}
-			else if (m_collection.containsKey(fileId))
-			{
-				registerChunk(paramMessage.generateChunk());
-			}
-			else
-			{
-				registerMessage(fileId, paramMessage.getChunkId());
-			}
+			registerMessage(fileId, paramMessage.getChunkId());
+		}
+		else if (m_collection.containsKey(fileId))
+		{
+			registerChunk(paramMessage.generateChunk());
+		}
+		else
+		{
+			registerMessage(fileId, paramMessage.getChunkId());
 		}
 	}
+	
+	/**
+	 * stores received CHUNK messages from other peers, key = (fileId, chunkId)
+	 */
+	private final HashMap<Integer, Boolean> m_received = new HashMap<>();
+
+	/**
+	 * mutex for dealing with concurrent accesses to the received messages hashmap
+	 */
+	private final Object m_receivedLock = new Object();
 
 	/**
 	 * @brief starts listening for CHUNK messages for the current chunk
@@ -141,6 +133,16 @@ public class RestoreService extends BaseService
 
 		return false;
 	}
+
+	/**
+	 * stores binary chunks for the files being restored, key = fileId
+	 */
+	private final HashMap<String, LinkedBlockingQueue<Chunk>> m_collection = new HashMap<>();
+
+	/**
+	 * mutex for dealing with concurrent accesses to the chunk collection hashmap
+	 */
+	private final Object m_collectionLock = new Object();
 
 	/**
 	 * @brief starts receiving binary chunks for the current file

@@ -1,7 +1,6 @@
-package bs.filesystem;
+package bs.logging;
 
 import java.util.Date;
-import bs.logging.ProgramException;
 
 public class MissingChunkException extends ProgramException
 {

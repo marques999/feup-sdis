@@ -15,7 +15,7 @@ import bs.protocol.Message;
 public abstract class BaseService extends Thread
 {
 	private final Random m_random;
-	private final MulticastConnection m_connection;
+	private final Connection m_connection;
 	private final MulticastSocket m_socket;
 	protected final FileManager fmInstance;
 	protected final BackupStorage bsdbInstance;
@@ -27,7 +27,7 @@ public abstract class BaseService extends Thread
 	 */
 	public BaseService(final String paramName, final InetAddress paramAddress, int paramPort)
 	{
-		m_connection = new MulticastConnection(paramName, paramAddress, paramPort, true);
+		m_connection = new Connection(paramName, paramAddress, paramPort, true);
 		m_random = new Random();
 		m_socket = m_connection.getSocket();
 		fmInstance = Peer.getFiles();
@@ -44,7 +44,7 @@ public abstract class BaseService extends Thread
 		return paramHeader.trim().split(" ");
 	}
 
-	public final MulticastConnection getConnection()
+	public final Connection getConnection()
 	{
 		return m_connection;
 	}

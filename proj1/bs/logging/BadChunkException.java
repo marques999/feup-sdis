@@ -1,7 +1,8 @@
-package bs.filesystem;
+package bs.logging;
 
 import java.util.Date;
-import bs.logging.ProgramException;
+
+import bs.filesystem.Chunk;
 
 public class BadChunkException extends ProgramException
 {

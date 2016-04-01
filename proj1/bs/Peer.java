@@ -16,6 +16,7 @@ import bs.logging.Logger;
 import bs.protocol.ChunkMessage;
 import bs.protocol.ChunkMessage2_0;
 import bs.protocol.DeleteMessage;
+import bs.protocol.DeletedMessage2_0;
 import bs.protocol.GetchunkMessage;
 import bs.protocol.GetchunkMessage2_0;
 import bs.protocol.Message;
@@ -103,7 +104,7 @@ public class Peer
 
 	//----------------------------------------------------
 
-	private static MulticastConnection MDB;
+	private static Connection MDB;
 
 	private static boolean issueBackupCommand(final Message paramMessage)
 	{
@@ -112,7 +113,7 @@ public class Peer
 
 	//----------------------------------------------------
 
-	private static MulticastConnection MC;
+	private static Connection MC;
 
 	private static boolean issueControlCommand(final Message paramMessage)
 	{
@@ -121,7 +122,7 @@ public class Peer
 
 	//----------------------------------------------------
 
-	private static MulticastConnection MDR;
+	private static Connection MDR;
 
 	private static boolean issueRestoreCommand(final Message paramMessage)
 	{
@@ -201,6 +202,12 @@ public class Peer
 	public static boolean sendDELETE(final String fileId)
 	{
 		return issueControlCommand(new DeleteMessage(fileId));
+	}
+	
+	public static boolean sendDELETED2_0(final String fileId)
+	{
+		Logger.logFileCommand("\"deleted2_0\"", fileId);
+		return issueControlCommand(new DeletedMessage2_0(fileId));
 	}
 
 	public static boolean sendGETCHUNK(final String fileId, int chunkId)
@@ -327,6 +334,7 @@ public class Peer
 		if (PeerGlobals.checkArguments(args.length))
 		{
 			initializePeer(args, false);
+			setEnhancements(false);
 		}
 		else
 		{
@@ -435,9 +443,9 @@ public class Peer
 		bsdbInstance.dumpStorage();
 		bsdbInstance.dumpRestore();
 
-		MC = new MulticastConnection("control channel", multicastControlHost, multicastControlPort, false);
-		MDB = new MulticastConnection("backup channel", multicastBackupHost, multicastBackupPort, false);
-		MDR = new MulticastConnection("restore channel", multicastRestoreHost, multicastRestorePort, false);
+		MC = new Connection("control channel", multicastControlHost, multicastControlPort, false);
+		MDB = new Connection("backup channel", multicastBackupHost, multicastBackupPort, false);
+		MDR = new Connection("restore channel", multicastRestoreHost, multicastRestorePort, false);
 
 		svcControl = new ControlService(multicastControlHost, multicastControlPort);
 		svcBackup = new BackupService(multicastBackupHost, multicastBackupPort);

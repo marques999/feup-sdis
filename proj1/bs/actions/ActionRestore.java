@@ -11,6 +11,7 @@ import bs.logging.ProgramException;
 
 public class ActionRestore extends Action
 {
+	private static final String messageReceivedChunk = "received \"chunk\" for chunk with id=%d";
 	private static final String messageChunkTimeout = "chunk reception timed out, trying again...";
 	private static final String messageWriteFailed = "could not write received chunks to output file!";
 	private static final String messageRestoreFailed = "reached maximum attempts to restore the requested file!";
@@ -63,7 +64,7 @@ public class ActionRestore extends Action
 				{
 					if (recoveredChunks.put(myChunk))
 					{
-						Logger.logDebug("received \"chunk\" for chunk with id=" + myChunk.getChunkId());
+						Logger.logDebug(String.format(messageReceivedChunk, myChunk.getChunkId()));
 						currentAttempt = 1;
 						currentChunk++;
 					}

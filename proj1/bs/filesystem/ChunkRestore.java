@@ -2,57 +2,60 @@ package bs.filesystem;
 
 import java.util.HashMap;
 
+import bs.logging.BadChunkException;
+import bs.logging.MissingChunkException;
+
 public class ChunkRestore
 {
-	private final String m_fileId;
-	private final HashMap<Integer, Chunk> m_chunksmap;
+	private final String fileId;
+	private final HashMap<Integer, Chunk> receivedChunks;
 
 	public ChunkRestore(final FileInformation restoreInformation)
 	{
-		m_fileId = restoreInformation.getFileId();
-		m_fileSize = restoreInformation.getFileSize();
-		m_count = restoreInformation.getCount();
-		m_chunksmap = new HashMap<Integer, Chunk>();
+		fileId = restoreInformation.getFileId();
+		fileSize = restoreInformation.getFileSize();
+		numberChunks = restoreInformation.getCount();
+		receivedChunks = new HashMap<Integer, Chunk>();
 	}
 
-	private int m_count;
-	private long m_fileSize;
+	private int numberChunks;
+	private long fileSize;
 
 	public final boolean put(final Chunk paramChunk)
 	{
 		int chunkId = paramChunk.getChunkId();
 
-		if (m_chunksmap.containsKey(chunkId) || !paramChunk.getFileId().equals(m_fileId))
+		if (receivedChunks.containsKey(chunkId) || !paramChunk.getFileId().equals(fileId))
 		{
 			return false;
 		}
 
-		m_chunksmap.put(chunkId, paramChunk);
+		receivedChunks.put(chunkId, paramChunk);
 
 		return true;
 	}
 
 	public byte[] join() throws MissingChunkException, BadChunkException
 	{
-		final Chunk lastChunk = m_chunksmap.get(m_count - 1);
+		final Chunk lastChunk = receivedChunks.get(numberChunks - 1);
 
 		if (lastChunk == null || !lastChunk.isLast())
 		{
-			throw new MissingChunkException(m_fileId);
+			throw new MissingChunkException(fileId);
 		}
 
-		final Chunk[] fileChunks = new Chunk[m_count];
+		final Chunk[] fileChunks = new Chunk[numberChunks];
 
-		for (int chunkId = 0; chunkId < m_count; chunkId++)
-		{			
-			if (!m_chunksmap.containsKey(chunkId))
+		for (int chunkId = 0; chunkId < numberChunks; chunkId++)
+		{
+			if (!receivedChunks.containsKey(chunkId))
 			{
-				throw new MissingChunkException(m_fileId);
+				throw new MissingChunkException(fileId);
 			}
 
-			final Chunk currentChunk = m_chunksmap.get(chunkId);
+			final Chunk currentChunk = receivedChunks.get(chunkId);
 
-			if (currentChunk.isLast() && chunkId != (m_count - 1))
+			if (currentChunk.isLast() && chunkId != (numberChunks - 1))
 			{
 				throw new BadChunkException(currentChunk);
 			}
@@ -60,10 +63,10 @@ public class ChunkRestore
 			fileChunks[chunkId] = currentChunk;
 		}
 
-		byte[] m_buffer = new byte[(int) m_fileSize];
+		byte[] m_buffer = new byte[(int) fileSize];
 		int bytesWritten = 0;
 
-		for (int id = 0; id < m_count; id++)
+		for (int id = 0; id < numberChunks; id++)
 		{
 			int bytesToWrite = (int) fileChunks[id].getLength();
 
@@ -74,9 +77,9 @@ public class ChunkRestore
 			}
 		}
 
-		if (bytesWritten != m_fileSize)
+		if (bytesWritten != fileSize)
 		{
-			throw new MissingChunkException(m_fileId);
+			throw new MissingChunkException(fileId);
 		}
 
 		return m_buffer;
