@@ -19,6 +19,6 @@ public class ProgramException extends Exception
 
 	public final void printMessage()
 	{
-		System.out.println(m_message);
+		Logger.logError(m_message);
 	}
 }

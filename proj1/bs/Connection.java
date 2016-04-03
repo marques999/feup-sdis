@@ -9,15 +9,12 @@ import bs.logging.Logger;
 
 public class Connection
 {
-	private static final String msgConnected = "%s forwarding messages to %s:%d";
-	private static final String msgListening = "%s listening at %s:%d";
-	private static final String msgConnectionError = "%s: offline (connection problem)!";
-
 	public Connection(final String paramName, final InetAddress paramAddress, int paramPort, boolean paramListen)
 	{
 		m_host = paramAddress;
 		m_port = paramPort;
 		m_name = paramName;
+		m_mutex = new Object();
 		m_available = false;
 
 		try
@@ -47,22 +44,23 @@ public class Connection
 
 			if (paramListen)
 			{
-				Logger.logInformation(String.format(msgListening, m_name, ipAddress, m_port));
+				Logger.logInformation(String.format(PeerStrings.messageMulticastListening, m_name, ipAddress, m_port));
 			}
 			else
 			{
-				Logger.logInformation(String.format(msgConnected, m_name, ipAddress, m_port));
+				Logger.logInformation(String.format(PeerStrings.messageMulticastConnected, m_name, ipAddress, m_port));
 			}
 		}
 		else
 		{
-			Logger.logError(String.format(msgConnectionError, m_name));
+			Logger.logError(String.format(PeerStrings.messageMulticastError, m_name));
 		}
 	}
 
 	//-----------------------------------------------------
 
 	private final InetAddress m_host;
+	private final Object m_mutex;
 
 	public final InetAddress getHost()
 	{
@@ -114,13 +112,16 @@ public class Connection
 			return false;
 		}
 
-		try
+		synchronized (m_mutex)
 		{
-			m_socket.send(new DatagramPacket(paramBuffer, paramBuffer.length, m_host, m_port));
-		}
-		catch (IOException ex)
-		{
-			return false;
+			try
+			{
+				m_socket.send(new DatagramPacket(paramBuffer, paramBuffer.length, m_host, m_port));
+			}
+			catch (IOException ex)
+			{
+				return false;
+			}
 		}
 
 		return true;

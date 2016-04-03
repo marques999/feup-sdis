@@ -2,9 +2,9 @@ package bs.test;
 
 public class TestStrings
 {
-	protected static final String messageInvalidRemoteObject = "invalid remote object, value must be between zero and 32767!";
+	protected static final String messageInvalidRemoteObject = "invalid remote object, value must be greater than zero!";
 	protected static final String messageInvalidArguments = "TestApp <[host:]rmi_object> <command> <opnd_1> [<opnd_2>]";
-	protected static final String messageInvalidCommand = "invalid command: [BACKUP(ENH)|RESTORE(ENH)|DELETE(ENH)|RECLAIM(ENH)]";
+	protected static final String messageInvalidCommand = "invalid command: [BACKUP|RESTORE(ENH)|DELETE(ENH)|RECLAIM(ENH)]";
 	protected static final String messageInvalidReplicationDegree = "invalid replication degree, value must be greater than zero!";
 	protected static final String messageInvalidReclaimAmount = "invalid reclaim amount, value must be greater than zero!";
 	protected static final String messageInvalidBackupArguments = "invalid arguments: BACKUP[ENH] <filename> <replication_degree>";
@@ -17,5 +17,5 @@ public class TestStrings
 	protected static final String messageLocalhost = "could not connect to localhost!";
 	protected static final String messageInvalidAddress = "could not locate address!";
 	protected static final String messageConnected = "connected to initiator peer, sending user request...";
-	protected final static String messageCommandError = "could not forward the request to the initiator peer!";
+	protected static final String messageCommandError = "could not forward the request to the initiator peer!";
 }

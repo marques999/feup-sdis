@@ -42,31 +42,6 @@ public abstract class PayloadMessage extends Message
 		m_degree = replicationDegree;
 	}
 
-	@Override
-	public final void dump()
-	{
-		super.dump();
-
-		System.out.println("\tChunkNo: " + m_chunkId);
-		System.out.println("\tLength: " + m_body.length + " bytes");
-
-		if (m_degree > 0)
-		{
-			System.out.println("\tDegree: " + m_degree);
-		}
-
-		int arraySize = m_body.length < 2048 ? m_body.length : 2048;
-
-		System.out.println("+===============================+");
-		System.out.println("|            PAYLOAD            |");
-		System.out.println("+===============================+");
-
-		for (int i = 0; i < arraySize; i++)
-		{
-			System.out.print(String.format("0x%02X", m_body[i]) + ",");
-		}
-	}
-
 	private final byte[] getHeader()
 	{
 		final String[] m_header = generateHeader();

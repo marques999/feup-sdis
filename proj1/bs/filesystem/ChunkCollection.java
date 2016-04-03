@@ -16,7 +16,7 @@ public class ChunkCollection implements Serializable
 		fileSize = 0;
 	}
 
-	// -----------------------------------------------------
+	//-----------------------------------------------------
 
 	private long fileSize;
 
@@ -25,7 +25,7 @@ public class ChunkCollection implements Serializable
 		return fileSize;
 	}
 
-	// -----------------------------------------------------
+	//-----------------------------------------------------
 
 	private final HashMap<Integer, ChunkInformation> fileChunks;
 
@@ -67,7 +67,7 @@ public class ChunkCollection implements Serializable
 		return fileChunks.isEmpty();
 	}
 
-	// -----------------------------------------------------
+	//-----------------------------------------------------
 
 	public final ChunkInformation getChunkInformation(int chunkId)
 	{
@@ -101,11 +101,6 @@ public class ChunkCollection implements Serializable
 		return chunkSize;
 	}
 
-
-	/**
-	 * @brief decreases the replication count of a chunk
-	 * @param chunkId chunk identifier number
-	 */
 	public final boolean removePeer(int chunkId, int peerId)
 	{
 		if (!fileChunks.containsKey(chunkId))
@@ -117,11 +112,7 @@ public class ChunkCollection implements Serializable
 		
 		return true;
 	}
-	
-	/**
-	 * @brief increases the replication count of a received chunk
-	 * @param chunkId chunk identifier number
-	 */
+
 	public final boolean registerPeer(int chunkId, int peerId)
 	{
 		if (!fileChunks.containsKey(chunkId))
@@ -134,19 +125,11 @@ public class ChunkCollection implements Serializable
 		return true;
 	}
 
-	/**
-	 * @brief checks if a given chunk exists
-	 * @param chunkId chunk identifier number
-	 */
 	public final boolean localChunkExists(int chunkId)
 	{
 		return fileChunks.containsKey(chunkId) && !fileChunks.get(chunkId).isTemporary();
 	}
 
-	/**
-	 * @brief inserts a given chunk into this collection
-	 * @param chunkId chunk identifier number
-	 */
 	public final long placeChunk(final Chunk chunk, final boolean localChunk)
 	{
 		int chunkId = chunk.getChunkId();
@@ -186,16 +169,19 @@ public class ChunkCollection implements Serializable
 	public final String toString(final String fileId)
 	{
 		final StringBuilder sb = new StringBuilder();
-
-		sb.append("+------------------------------------------------------------------+\n| ");
-		sb.append(fileId);
-		sb.append(" |\n+----------+------------------+------------------------------------+\n");
-		sb.append("| ChunkId  | Length           | Degree  |\n");
-		sb.append("+----------+------------------+---------+\n");
-		fileChunks.forEach((chunkId, chunkInformation) -> {
-			sb.append(chunkInformation.toString(chunkId));
-		});
-		sb.append("+----------+------------------+---------+\n");
+		
+		if (fileChunks.size() > 0)
+		{
+			sb.append("+------------------------------------------------------------------+\n| ");
+			sb.append(fileId);
+			sb.append(" |\n+----------+------------------+------------------------------------+\n");
+			sb.append("| ChunkId  | Length           | Degree  |\n");
+			sb.append("+----------+------------------+---------+\n");
+			fileChunks.forEach((chunkId, chunkInformation) -> {
+				sb.append(chunkInformation.toString(chunkId));
+			});
+			sb.append("+----------+------------------+---------+\n");
+		}
 
 		return sb.toString();
 	}

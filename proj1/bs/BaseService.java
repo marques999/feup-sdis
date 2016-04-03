@@ -17,22 +17,18 @@ public abstract class BaseService extends Thread
 	private final Random m_random;
 	private final Connection m_connection;
 	private final MulticastSocket m_socket;
-	protected final FileManager fmInstance;
-	protected final BackupStorage bsdbInstance;
 
-	/**
-	 * @brief default constructor for 'BackupService' class
-	 * @param paramAddress address of the multicast channel
-	 * @param paramPort port of the multicast channel
-	 */
 	public BaseService(final String paramName, final InetAddress paramAddress, int paramPort)
 	{
-		m_connection = new Connection(paramName, paramAddress, paramPort, true);
 		m_random = new Random();
+		m_connection = new Connection(paramName, paramAddress, paramPort, true);
 		m_socket = m_connection.getSocket();
 		fmInstance = Peer.getFiles();
 		bsdbInstance = Peer.getStorage();
 	}
+	
+	protected final FileManager fmInstance;
+	protected final BackupStorage bsdbInstance;
 	
 	public final boolean available()
 	{

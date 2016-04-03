@@ -287,7 +287,7 @@ public class ControlService extends BaseService
 
 		synchronized (confirmationsLock)
 		{
-			confirmationsArray.put(generatedHash,paramPeers);
+			confirmationsArray.put(generatedHash, paramPeers);
 		}
 	}
 

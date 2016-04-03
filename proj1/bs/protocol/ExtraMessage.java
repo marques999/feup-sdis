@@ -17,13 +17,6 @@ public abstract class ExtraMessage extends SimpleMessage
 	}
 
 	@Override
-	public void dump()
-	{
-		super.dump();
-		System.out.println("\tPort: " + m_port);
-	}
-
-	@Override
 	public final byte[] getMessage()
 	{
 		return (getHeader() + "\r\n" + Integer.toString(m_port) + "\r\n\r\n").getBytes();

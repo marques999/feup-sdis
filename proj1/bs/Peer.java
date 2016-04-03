@@ -183,7 +183,7 @@ public class Peer
 
 	public static boolean sendCHUNK(final Chunk paramChunk)
 	{
-		Logger.logDebug("sending multicast chunk " + paramChunk.getChunkId() + "...");
+		Logger.logDebug("sending chunk " + paramChunk.getChunkId() + "...");
 		return issueRestoreCommand(new ChunkMessage(paramChunk));
 	}
 
@@ -206,7 +206,6 @@ public class Peer
 	
 	public static boolean sendDELETED2_0(final String fileId)
 	{
-		Logger.logFileCommand("\"deleted2_0\"", fileId);
 		return issueControlCommand(new DeletedMessage2_0(fileId));
 	}
 
@@ -329,7 +328,7 @@ public class Peer
 	private static InetAddress multicastBackupHost = null;
 	private static InetAddress multicastRestoreHost = null;
 
-	public static void main(final String[] args) throws IOException
+	public static void main(final String[] args)
 	{
 		if (PeerGlobals.checkArguments(args.length))
 		{

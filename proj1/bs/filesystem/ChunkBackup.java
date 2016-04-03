@@ -11,9 +11,9 @@ import bs.PeerGlobals;
 
 public class ChunkBackup
 {
-	public ChunkBackup(final String fileName, int replicationDegree) throws IOException
+	public ChunkBackup(final String myFile, int replicationDegree) throws IOException
 	{
-		final File fileDescriptor = new File("files/" + fileName);
+		final File fileDescriptor = new File("files/" + myFile);
 
 		try
 		{
@@ -24,18 +24,18 @@ public class ChunkBackup
 			ex.printStackTrace();
 		}
 
-		m_size = fileDescriptor.length();
-		m_count = (int) (m_size / PeerGlobals.maximumChunkSize + 1);
-		m_chunks = new Chunk[m_count];
-		m_fileName = fileName;
+		fileSize = fileDescriptor.length();
+		numberChunks = (int) (fileSize / PeerGlobals.maximumChunkSize + 1);
+		chunksArray = new Chunk[numberChunks];
+		fileName = myFile;
 
 		try (BufferedInputStream chunkReader = new BufferedInputStream(new FileInputStream(fileDescriptor)))
 		{
-			System.out.println(fileName + " will be split into " + m_count + " chunks.");
+			System.out.println(myFile + " will be split into " + numberChunks + " chunks.");
 
-			for (int i = 0; i < m_count; i++)
+			for (int i = 0; i < numberChunks; i++)
 			{
-				m_chunks[i] = new Chunk(chunkReader, m_fileId, i, replicationDegree);
+				chunksArray[i] = new Chunk(chunkReader, fileId, i, replicationDegree);
 			}
 		}
 	}
@@ -55,51 +55,51 @@ public class ChunkBackup
 			sb.append(Integer.toString((element & 0xff) + 0x100, 16).substring(1));
 		}
 
-		m_fileId = sb.toString();
+		fileId = sb.toString();
 	}
 
-	// -----------------------------------------------------
+	//-----------------------------------------------------
 
-	private final Chunk[] m_chunks;
+	private final Chunk[] chunksArray;
 
 	public final Chunk[] getChunks()
 	{
-		return m_chunks;
+		return chunksArray;
 	}
 
-	// -----------------------------------------------------
+	//-----------------------------------------------------
 
-	private String m_fileId;
+	private String fileId;
 
 	public final String getFileId()
 	{
-		return m_fileId;
+		return fileId;
 	}
 
-	// -----------------------------------------------------
+	//-----------------------------------------------------
 
-	private final String m_fileName;
+	private final String fileName;
 
 	public final String getFileName()
 	{
-		return m_fileName;
+		return fileName;
 	}
 
-	// -----------------------------------------------------
+	//-----------------------------------------------------
 
-	private final int m_count;
+	private final int numberChunks;
 
 	public final int getCount()
 	{
-		return m_count;
+		return numberChunks;
 	}
 
-	// -----------------------------------------------------
+	//-----------------------------------------------------
 
-	private final long m_size;
+	private final long fileSize;
 
 	public final long getFileSize()
 	{
-		return m_size;
+		return fileSize;
 	}
 }

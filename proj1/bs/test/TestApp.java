@@ -26,7 +26,7 @@ public class TestApp
 		int reclaimAmount = 0;
 		int replicationDegree = 0;
 
-		if (paramType.equals("BACKUP") || paramType.equals("BACKUPENH"))
+		if (paramType.equals("BACKUP"))
 		{
 			if (args.length != 4)
 			{
@@ -84,7 +84,7 @@ public class TestApp
 		}
 		else
 		{
-			Logger.abort(TestStrings.messageInvalidArguments);
+			Logger.abort(TestStrings.messageInvalidCommand);
 		}
 
 		final String rmiObject = rmiServer.substring(separatorPosition + 1);
@@ -93,7 +93,7 @@ public class TestApp
 		{
 			int objectName = Integer.parseInt(rmiObject);
 
-			if (objectName < 0 || objectName > Short.MAX_VALUE)
+			if (objectName < 0)
 			{
 				Logger.abort(TestStrings.messageInvalidRemoteObject);
 			}
@@ -158,7 +158,7 @@ public class TestApp
 
 			if (paramType.startsWith("BACKUP"))
 			{
-				remoteResult = stub.backupFile(firstOperand, replicationDegree, enhancedCommand);
+				remoteResult = stub.backupFile(firstOperand, replicationDegree);
 			}
 			else if (paramType.startsWith("DELETE"))
 			{

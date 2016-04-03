@@ -5,7 +5,11 @@ public class PeerStrings
 	protected static final String messageConnecting = "connecting to rmiregistry server...";
 	protected static final String messageConnected = "connected to initiator service, listening for commands!";
 	protected static final String messageObjectExists = "remote object already exists, rebinding...";	
-	protected static final String messageProgramUsage = "BackupSystem <Host> <PeerId> [<McPort> <MdbPort> <MdrPort>]";
+	protected static final String messageMulticastConnected = "%s forwarding messages to %s:%d";
+	protected static final String messageMulticastListening = "%s listening at %s:%d";
+	protected static final String messageUnicastListening = "unicast service: listening at port %d";
+	protected static final String messageUnicastError = "unicast service: offline (connection problem)!";
+	protected static final String messageMulticastError = "%s: offline (connection problem)!";
 	protected static final String messageRemoteException = "could not bind object, is rmiregistry running?";
 	protected static final String messageBackupDone = "backup action sucessfully completed!";
 	protected static final String messageRestoreDone = "restore action sucessfully completed!";

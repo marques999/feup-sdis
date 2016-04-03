@@ -1,6 +1,5 @@
 package bs;
 
-import java.io.IOException;
 import java.rmi.AlreadyBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -16,7 +15,7 @@ import bs.test.TestStub;
 
 public class InitiatorPeer implements TestStub
 {
-	public static void main(final String[] args) throws IOException
+	public static void main(final String[] args)
 	{
 		if (PeerGlobals.checkArguments(args.length))
 		{
@@ -27,7 +26,7 @@ public class InitiatorPeer implements TestStub
 		}
 		else
 		{
-			Logger.logError("invalid number of arguments given, please enter the following:");
+			System.out.println("--[ERROR]-- invalid number of arguments given, please enter the following:");
 			System.out.println("    (1) InitiatorPeer <PeerId> <Host>");
 			System.out.println("    (2) InitiatorPeer <PeerId> <Host> <McPort> <MdbPort> <MdrPort>");
 			System.out.println("    (3) InitiatorPeer <PeerId> <McHost> <McPort> <MdbHost> <MdbPort> <MdrHost> <MdrPort>");
@@ -69,9 +68,9 @@ public class InitiatorPeer implements TestStub
 	}
 
 	@Override
-	public boolean backupFile(final String fileId, int replicationDegree, boolean enableEnhancements) throws RemoteException
+	public boolean backupFile(final String fileId, int replicationDegree) throws RemoteException
 	{
-		Peer.setEnhancements(enableEnhancements);
+		Peer.setEnhancements(false);
 
 		final ActionBackup actionBackup = new ActionBackup(fileId, replicationDegree);
 

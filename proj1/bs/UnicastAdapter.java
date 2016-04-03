@@ -8,8 +8,6 @@ import bs.logging.Logger;
 
 public class UnicastAdapter extends Thread
 {
-	private static final String msgListening = "unicast service: listening at port %d";
-	private static final String msgConnectionError = "unicast service: offline (connection problem)!";
 	private final BaseService m_service;
 	private final Object m_mutex;
 	private DatagramSocket m_socket;
@@ -32,11 +30,11 @@ public class UnicastAdapter extends Thread
 		
 		if (m_available)
 		{
-			Logger.logInformation(String.format(msgListening, getPort()));
+			Logger.logInformation(String.format(PeerStrings.messageUnicastListening, getPort()));
 		}
 		else
 		{
-			Logger.logError(String.format(msgConnectionError));
+			Logger.logError(String.format(PeerStrings.messageUnicastError));
 		}
 	}
 

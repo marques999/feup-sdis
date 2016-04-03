@@ -11,11 +11,11 @@ public class PeerGlobals
 	public static final int maximumPacketLength = 65000;
 	public static final long maximumChunkSize = 64000;
 
-	private static final int minimumPeerArguments = 2;
-	private static final int maximumPeerArguments = 7;
+	private static final int minimumArguments = 2;
+	private static final int maximumArguments = 7;
 
 	protected static boolean checkArguments(int argc)
 	{
-		return argc >= minimumPeerArguments && argc <= maximumPeerArguments;
+		return argc >= minimumArguments && argc <= maximumArguments;
 	}
 }

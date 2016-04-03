@@ -57,7 +57,7 @@ public class ChunkRestore
 
 			if (currentChunk.isLast() && chunkId != (numberChunks - 1))
 			{
-				throw new BadChunkException(currentChunk);
+				throw new BadChunkException(chunkId);
 			}
 
 			fileChunks[chunkId] = currentChunk;

@@ -19,7 +19,7 @@ public class BackupStorage implements Serializable
 		localChunks = new HashMap<String, ChunkCollection>();
 		remoteFiles = new HashMap<String, FileInformation>();
 		remotePeers = new HashMap<String, RemoteCollection>();
-		reclaimedChunks = new HashSet<Integer>();
+		ignoredChunks = new HashSet<Integer>();
 	}
 
 	//-----------------------------------------------------
@@ -36,8 +36,7 @@ public class BackupStorage implements Serializable
 			{	
 				remotePeers.put(fileId, new RemoteCollection(paramChunk.getReplicationDegree()));
 			}
-			
-			System.out.println("registering " + paramPeers.size() + " remote peers...");
+
 			remotePeers.get(fileId).registerPeers(paramChunk.getChunkId(), paramPeers);
 		}
 		
@@ -64,8 +63,6 @@ public class BackupStorage implements Serializable
 
 	public final void removeRemotePeer(final String fileId, int chunkId, int peerId)
 	{
-		System.out.println("removing peer " + peerId + " from remote chunk with id=" + chunkId + "...");
-		
 		synchronized (remotePeers)
 		{
 			if (remotePeers.containsKey(fileId))
@@ -77,8 +74,6 @@ public class BackupStorage implements Serializable
 	
 	public final void removeRemotePeer(final String fileId, int peerId)
 	{
-		System.out.println("removing peer " + peerId + " from remote file...");
-		
 		synchronized (remotePeers)
 		{
 			if (remotePeers.containsKey(fileId))
@@ -93,27 +88,33 @@ public class BackupStorage implements Serializable
 	private void readObject(ObjectInputStream inputStream) throws IOException, ClassNotFoundException
 	{
 		inputStream.defaultReadObject();
-		reclaimedChunks = new HashSet<Integer>();
+		ignoredChunks = new HashSet<Integer>();
 	}
 
 	public void dumpStorage()
 	{
-		System.out.println("!!! CHUNKS IN DATABASE !!!");
-		localChunks.forEach((fileId, fileInformation) -> {
-			System.out.print(fileInformation.toString(fileId));
-		});
+		if (localChunks.size() > 0)
+		{
+			System.out.println("!!! CHUNKS IN DATABASE !!!");
+			localChunks.forEach((fileId, fileInformation) -> {
+				System.out.print(fileInformation.toString(fileId));
+			});
+		}
 	}
 
 	public final void dumpRestore()
 	{
-		System.out.println("!!! FILES THAT CAN BE RESTORED !!!");
-		System.out.print("+--------------------------------+------------------+---------+--------+\n");
-		System.out.print("| Filename                       | Length           | #Chunks | #Peers |\n");
-		System.out.print("+--------------------------------+------------------+---------+--------+\n");
-		remoteFiles.forEach((fileName, fileInformation) -> {
-			System.out.print(fileInformation.toString(fileName));
-		});
-		System.out.print("+--------------------------------+------------------+---------+--------+\n");
+		if (remoteFiles.size() > 0)
+		{
+			System.out.println("!!! FILES THAT CAN BE RESTORED !!!");
+			System.out.print("+--------------------------------+------------------+---------+--------+\n");
+			System.out.print("| Filename                       | Length           | #Chunks | #Peers |\n");
+			System.out.print("+--------------------------------+------------------+---------+--------+\n");
+			remoteFiles.forEach((fileName, fileInformation) -> {
+				System.out.print(fileInformation.toString(fileName));
+			});
+			System.out.print("+--------------------------------+------------------+---------+--------+\n");
+		}
 	}
 
 	//-----------------------------------------------------
@@ -167,7 +168,7 @@ public class BackupStorage implements Serializable
 
 	//-----------------------------------------------------
 
-	private transient Set<Integer> reclaimedChunks;
+	private transient Set<Integer> ignoredChunks;
 
 	private int calculateHash(final String fileId, int chunkId)
 	{
@@ -183,17 +184,17 @@ public class BackupStorage implements Serializable
 
 	public final void registerReclaim(final Chunk paramChunk)
 	{
-		reclaimedChunks.add(calculateHash(paramChunk.getFileId(), paramChunk.getChunkId()));
+		ignoredChunks.add(calculateHash(paramChunk.getFileId(), paramChunk.getChunkId()));
 	}
 
-	public final boolean chunkWasReclaimed(final String fileId, int chunkId)
+	public final boolean ignoreChunk(final String fileId, int chunkId)
 	{
-		return reclaimedChunks.contains(calculateHash(fileId, chunkId));
+		return ignoredChunks.contains(calculateHash(fileId, chunkId));
 	}
 
 	public final void unregisterReclaim()
 	{
-		reclaimedChunks.clear();
+		ignoredChunks.clear();
 	}
 
 	//-----------------------------------------------------

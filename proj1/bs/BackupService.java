@@ -13,16 +13,6 @@ import bs.protocol.GenericMessage;
 public class BackupService extends BaseService
 {
 	/**
-	 * stores PUTCHUNK messages received for the files being reclaimed, key = (fileId, chunkId)
-	 */
-	private final HashMap<Integer, Set<Integer>> putchunkMessages = new HashMap<>();
-
-	/**
-	 * mutex for dealing with concurrent accesses to the putchunk messages hashmap
-	 */
-	private final Object putchunkLock = new Object();
-
-	/**
 	 * @brief default constructor for 'BackupService' class
 	 * @param paramAddress address of the multicast backup channel
 	 * @param paramPort port of the multicast backup channel
@@ -75,7 +65,7 @@ public class BackupService extends BaseService
 		byte[] messageBody = paramMessage.getBody();
 		boolean chunkExists = false;
 
-		if (bsdbInstance.chunkWasReclaimed(fileId, chunkId))
+		if (bsdbInstance.ignoreChunk(fileId, chunkId))
 		{
 			int generatedHash = calculateHash(fileId, chunkId);
 
@@ -195,6 +185,16 @@ public class BackupService extends BaseService
 			}
 		}
 	}
+
+	/**
+	 * stores PUTCHUNK messages received for the files being reclaimed, key = (fileId, chunkId)
+	 */
+	private final HashMap<Integer, Set<Integer>> putchunkMessages = new HashMap<>();
+
+	/**
+	 * mutex for dealing with concurrent accesses to the putchunk messages hashmap
+	 */
+	private final Object putchunkLock = new Object();
 
 	/**
 	 * @brief starts listening for PUTCHUNK messages for the current chunk

@@ -8,9 +8,9 @@ import bs.logging.Logger;
 
 public class ActionBackup extends Action
 {
-	private static final String messageInterrupted = "backup thread was interrupted before it could complete!";
-	private static final String messageFileOnline = "requested file has already been backed up on the network!";
-	private static final String messageFileNotFound = "requested file doesn't exist on the filesystem!";
+	private final static String messageInterrupted = "backup thread was interrupted before it could complete!";
+	private final static String messageFileOnline = "requested file has already been backed up on the network!";
+	private final static String messageFileNotFound = "requested file doesn't exist on the filesystem!";
 	private final String fileName;
 
 	public ActionBackup(final String paramName, int paramDegree)
@@ -36,6 +36,11 @@ public class ActionBackup extends Action
 				currentThread.join();
 			}
 			catch (InterruptedException ex)
+			{
+				return false;
+			}
+			
+			if (!currentThread.getResult())
 			{
 				return false;
 			}
