@@ -7,7 +7,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 import bs.filesystem.Chunk;
-import bs.logging.Logger;
 import bs.protocol.GenericMessage;
 
 public class BackupService extends BaseService
@@ -103,9 +102,9 @@ public class BackupService extends BaseService
 			}
 			else
 			{
-				// ---------------------------------------------------------
+				//---------------------------------------------------------
 				// REJECT CHUNKS IF THERE'S NO FREE SPACE LEFT ON THIS PEER
-				// ---------------------------------------------------------
+				//---------------------------------------------------------
 
 				if (messageBody.length > bsdbInstance.getFreeSpace())
 				{
@@ -116,9 +115,9 @@ public class BackupService extends BaseService
 			final Chunk myChunk = paramMessage.generateChunk();
 			final ControlService svcControl = Peer.getControlService();
 
-			// ------------------------------------------------------------------------------
+			//------------------------------------------------------------------------------
 			// IF PEER ALREADY HAS THIS CHUNK, SEND "STORED" CONFIRMATION TO REMAINING PEERS
-			// ------------------------------------------------------------------------------
+			//------------------------------------------------------------------------------
 
 			if (chunkExists)
 			{
@@ -126,9 +125,9 @@ public class BackupService extends BaseService
 			}
 			else
 			{
-				// ----------------------------------------------------------
+				//----------------------------------------------------------
 				// START LISTENING FOR "STORED" CONFIRMATIONS FOR THIS CHUNK
-				// ----------------------------------------------------------
+				//----------------------------------------------------------
 
 				if (Peer.enhancementsEnabled())
 				{
@@ -177,9 +176,9 @@ public class BackupService extends BaseService
 					Peer.sendSTORED(myChunk);
 				}
 
-				// ---------------------------------------------------------
+				//---------------------------------------------------------
 				// STOP LISTENING FOR "STORED" CONFIRMATIONS FOR THIS CHUNK
-				// ---------------------------------------------------------
+				//---------------------------------------------------------
 
 				svcControl.unsubscribeConfirmations(myChunk);
 			}

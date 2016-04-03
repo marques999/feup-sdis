@@ -1,12 +1,12 @@
 package bs.actions;
 
+import bs.Logger;
 import bs.Peer;
 import bs.PeerGlobals;
 import bs.RestoreService;
 import bs.filesystem.Chunk;
 import bs.filesystem.ChunkRestore;
 import bs.filesystem.FileInformation;
-import bs.logging.Logger;
 import bs.logging.ProgramException;
 
 public class ActionRestore extends Action

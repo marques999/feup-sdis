@@ -107,9 +107,9 @@ public class ChunkCollection implements Serializable
 		{
 			return false;
 		}
-		
+
 		fileChunks.get(chunkId).removePeer(peerId);
-		
+
 		return true;
 	}
 
@@ -119,9 +119,9 @@ public class ChunkCollection implements Serializable
 		{
 			return false;
 		}
-		
+
 		fileChunks.get(chunkId).registerPeer(peerId);
-		
+
 		return true;
 	}
 
@@ -169,7 +169,7 @@ public class ChunkCollection implements Serializable
 	public final String toString(final String fileId)
 	{
 		final StringBuilder sb = new StringBuilder();
-		
+
 		if (fileChunks.size() > 0)
 		{
 			sb.append("+------------------------------------------------------------------+\n| ");

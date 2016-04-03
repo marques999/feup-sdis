@@ -2,9 +2,9 @@ package bs.actions;
 
 import java.io.IOException;
 
+import bs.Logger;
 import bs.filesystem.Chunk;
 import bs.filesystem.ChunkBackup;
-import bs.logging.Logger;
 
 public class ActionBackup extends Action
 {
@@ -39,7 +39,7 @@ public class ActionBackup extends Action
 			{
 				return false;
 			}
-			
+
 			if (!currentThread.getResult())
 			{
 				return false;
@@ -53,7 +53,7 @@ public class ActionBackup extends Action
 	public void run()
 	{
 		if (bsdbInstance.canBackup(fileName))
-		{		
+		{
 			try
 			{
 				final ChunkBackup chunkBackup = new ChunkBackup(fileName, replicationDegree);

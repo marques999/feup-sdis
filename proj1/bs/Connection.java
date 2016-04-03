@@ -5,8 +5,6 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 
-import bs.logging.Logger;
-
 public class Connection
 {
 	public Connection(final String paramName, final InetAddress paramAddress, int paramPort, boolean paramListen)

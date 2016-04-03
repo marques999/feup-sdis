@@ -12,7 +12,7 @@ public class GenericMessage
 	 * ASCII characters.
 	 */
 	private final String m_type;
-	
+
 	/*
 	 * This attribute represents the number of fields in the received message.
 	 * Its value is encoded as a variable length sequence of ASCII digits
@@ -24,7 +24,7 @@ public class GenericMessage
 	 * Its value is encoded as a variable length sequence of ASCII digits.
 	 */
 	private final int m_peerId;
-	
+
 	/*
 	 * This attribute represents the protocol version. It is a three ASCII char
 	 * sequence with the format <n>'.'<m>, where <n> and <m> are the ASCII codes
@@ -32,7 +32,7 @@ public class GenericMessage
 	 * should be encoded as the char sequence '1'- '.' - '0'.
 	 */
 	private final String m_version;
-	
+
 	/*
 	 * This attribute represents the file identifier for the backup service. As
 	 * stated above, it is supposed to be obtained by using the SHA256
@@ -45,7 +45,7 @@ public class GenericMessage
 	 * order, i.e. from the MSB (byte 31) to the LSB (byte 0).
 	 */
 	private final String m_fileId;
-	
+
 	/*
 	 * This attribute together with the FileId specifies a chunk in the file. The
 	 * chunk numbers are integers and should be assigned sequentially starting
@@ -57,14 +57,14 @@ public class GenericMessage
 	 * files to backup to 64 GByte.
 	 */
 	private final int m_chunkId;
-	
+
 	/*
 	 * This attribute contains the desired replication degree of the chunk. This is
 	 * a digit, thus allowing a replication degree of up to 9. It takes one
 	 * byte, which is the ASCII code of that digit.
 	 */
 	private final int m_degree;
-	
+
 	/*
 	 * When present, the body contains the data of a file chunk. The length of
 	 * the body is variable. As stated above, if it is smaller than the maximum
@@ -78,22 +78,22 @@ public class GenericMessage
 	{
 		this(paramHeader, null, null);
 	}
-	
+
 	public final Chunk generateChunk()
 	{
 		return new Chunk(m_body, getFileId(), m_chunkId, m_degree);
 	}
-	
+
 	public GenericMessage(final String[] paramHeader, final byte[] paramBody)
 	{
 		this(paramHeader, null, paramBody);
 	}
-	
+
 	public GenericMessage(final String[] paramHeader, final String[] paramExtra)
 	{
 		this(paramHeader, paramExtra, null);
 	}
-	
+
 	private GenericMessage(final String[] paramHeader, final String[] paramExtra, final byte[] paramBody)
 	{
 		m_type = paramHeader[Message.Type];
@@ -138,37 +138,37 @@ public class GenericMessage
 			m_port = -1;
 		}
 	}
-	
+
 	public final boolean hasEnhancements()
 	{
 		return !m_version.equals("1.0");
 	}
-	
+
 	public final int getPeerId()
 	{
 		return m_peerId;
 	}
-	
+
 	public final String getVersion()
 	{
 		return m_version;
 	}
-	
+
 	public final String getFileId()
 	{
 		return m_fileId;
 	}
-	
+
 	public final int getChunkId()
 	{
 		return m_chunkId;
 	}
-	
+
 	public final int getDegree()
 	{
 		return m_degree;
 	}
-	
+
 	public final byte[] getBody()
 	{
 		return m_body;
@@ -185,7 +185,7 @@ public class GenericMessage
 	}
 
 	private final int m_port;
-	
+
 	public final int getPort()
 	{
 		return m_port;

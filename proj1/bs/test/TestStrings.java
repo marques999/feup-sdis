@@ -8,7 +8,7 @@ public class TestStrings
 	protected static final String messageInvalidReplicationDegree = "invalid replication degree, value must be greater than zero!";
 	protected static final String messageInvalidReclaimAmount = "invalid reclaim amount, value must be greater than zero!";
 	protected static final String messageInvalidBackupArguments = "invalid arguments: BACKUP[ENH] <filename> <replication_degree>";
-	protected static final String messageInvalidRestoreArguments =	"invalid arguments: RESTORE[ENH] <filename>";
+	protected static final String messageInvalidRestoreArguments = "invalid arguments: RESTORE[ENH] <filename>";
 	protected static final String messageInvalidDeleteArguments = "invalid arguments: DELETE[ENH] <filename>";
 	protected static final String messageInvalidReclaimArguments = "invalid arguments: RECLAIM[ENH] <amount(bytes)>";
 	protected static final String messageRemoteException = "could not connect to target machine, is rmiregistry running?";

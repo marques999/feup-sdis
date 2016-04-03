@@ -4,7 +4,7 @@ public class PeerStrings
 {
 	protected static final String messageConnecting = "connecting to rmiregistry server...";
 	protected static final String messageConnected = "connected to initiator service, listening for commands!";
-	protected static final String messageObjectExists = "remote object already exists, rebinding...";	
+	protected static final String messageObjectExists = "remote object already exists, rebinding...";
 	protected static final String messageMulticastConnected = "%s forwarding messages to %s:%d";
 	protected static final String messageMulticastListening = "%s listening at %s:%d";
 	protected static final String messageUnicastListening = "unicast service: listening at port %d";

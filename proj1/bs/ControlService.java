@@ -8,7 +8,6 @@ import java.util.Set;
 
 import bs.filesystem.Chunk;
 import bs.actions.BackupHelper;
-import bs.logging.Logger;
 import bs.protocol.GenericMessage;
 
 public class ControlService extends BaseService
@@ -78,7 +77,7 @@ public class ControlService extends BaseService
 		registerConfirmation(paramMessage.getFileId(), paramMessage.getChunkId(), paramMessage.getPeerId());
 		bsdbInstance.registerPeer(paramMessage.getFileId(), paramMessage.getChunkId(), paramMessage.getPeerId());
 	}
-	
+
 	/**
 	 * @brief processes a DELETED message sent to the control service
 	 * @param paramMessage contents of the received message
@@ -103,7 +102,7 @@ public class ControlService extends BaseService
 		//-------------------------------------------------
 
 		bsdbInstance.removeRemotePeer(fileId, chunkId, peerId);
-		
+
 		if (!bsdbInstance.hasLocalChunk(fileId, chunkId))
 		{
 			return;
@@ -114,7 +113,7 @@ public class ControlService extends BaseService
 		//--------------------------------------------------
 
 		bsdbInstance.removePeer(fileId, chunkId, peerId);
-	
+
 		int currentReplicationDegree = bsdbInstance.getPeerCount(fileId, chunkId);
 		int desiredReplicationDegree = bsdbInstance.getReplicationDegree(fileId, chunkId);
 
@@ -159,7 +158,7 @@ public class ControlService extends BaseService
 			if (numberPutchunkMessages == 0)
 			{
 				final Chunk myChunk = fmInstance.readChunk(fileId, chunkId);
-				
+
 				Logger.logWarning("no putchunk messages received, starting chunk backup!");
 
 				//-------------------------------

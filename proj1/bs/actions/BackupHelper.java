@@ -3,10 +3,10 @@ package bs.actions;
 import java.util.Set;
 
 import bs.ControlService;
-import bs.PeerGlobals;
+import bs.Logger;
 import bs.Peer;
+import bs.PeerGlobals;
 import bs.filesystem.Chunk;
-import bs.logging.Logger;
 
 public class BackupHelper extends Action
 {
@@ -28,7 +28,7 @@ public class BackupHelper extends Action
 	@Override
 	public void run()
 	{
-		final ControlService controlService = Peer.getControlService();		
+		final ControlService controlService = Peer.getControlService();
 		int currentAttempt = 1;
 		int chunkId = myChunk.getChunkId();
 		int replicationDegree = myChunk.getReplicationDegree();
@@ -45,9 +45,9 @@ public class BackupHelper extends Action
 			}
 			else
 			{
-				controlService.resetPeerConfirmations(myChunk);	
+				controlService.resetPeerConfirmations(myChunk);
 			}
-			
+
 			Peer.sendPUTCHUNK(myChunk);
 
 			try
@@ -66,7 +66,7 @@ public class BackupHelper extends Action
 			}
 
 			final Set<Integer> peerConfirmations = controlService.getPeerConfirmations(myChunk);
-			
+
 			Logger.logDebug(String.format(messageConfirmations, peerConfirmations.size(), replicationDegree));
 
 			if (peerConfirmations.size() < replicationDegree)
@@ -76,7 +76,7 @@ public class BackupHelper extends Action
 				if (currentAttempt > PeerGlobals.maximumAttempts)
 				{
 					Logger.logError(messageBackupFailed);
-					
+
 					if (peerConfirmations.size() > 0)
 					{
 						actionResult = true;
@@ -96,7 +96,7 @@ public class BackupHelper extends Action
 			{
 				actionResult = true;
 			}
-			
+
 			bsdbInstance.registerRemotePeers(myChunk, peerConfirmations);
 		}
 

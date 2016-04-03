@@ -1,14 +1,13 @@
 package bs.actions;
 
-import bs.PeerGlobals;
-
 import java.util.Set;
 
 import bs.BackupService;
-import bs.Peer;
 import bs.ControlService;
+import bs.Logger;
+import bs.Peer;
+import bs.PeerGlobals;
 import bs.filesystem.Chunk;
-import bs.logging.Logger;
 
 public class ActionReclaim extends Action
 {
@@ -65,7 +64,7 @@ public class ActionReclaim extends Action
 		{
 			Logger.logDebug("received " + numberPutchunkMessages + " putchunk messages, moving on...");
 			taskResult = listenConfirmations(mostReplicated, controlService);
-			
+
 			if (!taskResult)
 			{
 				Logger.logError(messageMaxAttempts);
@@ -76,7 +75,7 @@ public class ActionReclaim extends Action
 			Logger.logWarning(messageNoPutchunk);
 			taskResult = forceBackup(mostReplicated);
 		}
-		
+
 		return taskResult;
 	}
 
@@ -84,7 +83,7 @@ public class ActionReclaim extends Action
 	{
 		int waitingTime = PeerGlobals.initialWaitingTime;
 		boolean taskResult = false;
-		
+
 		Set<Integer> peerConfirmations = bsdbInstance.getPeers(myChunk.getFileId(), myChunk.getChunkId());
 		controlService.subscribeConfirmations(myChunk);
 		controlService.setPeerConfirmations(myChunk, peerConfirmations);
@@ -98,7 +97,7 @@ public class ActionReclaim extends Action
 			//---------------------------------------------------------------------
 			// START LISTENING FOR STORED MESSAGES (INITIAL WAITING TIME: 1 SECOND)
 			//---------------------------------------------------------------------
-			
+
 			try
 			{
 				Logger.logDebug(String.format(messageWaiting, i));
@@ -165,7 +164,7 @@ public class ActionReclaim extends Action
 		{
 			return false;
 		}
-		
+
 		return backupHelper.getResult();
 	}
 
@@ -205,7 +204,7 @@ public class ActionReclaim extends Action
 				//-----------------------------------------------
 				// CHECK IF OTHER PEERS HAVE BACKED UP THIS CHUNK
 				//-----------------------------------------------
-				
+
 				if (peerCount == 1)
 				{
 					try
@@ -217,7 +216,7 @@ public class ActionReclaim extends Action
 						ex.printStackTrace();
 					}
 
-					actionResult = forceBackup(mostReplicated);				
+					actionResult = forceBackup(mostReplicated);
 				}
 				else
 				{
@@ -239,15 +238,15 @@ public class ActionReclaim extends Action
 						{
 							ex.printStackTrace();
 						}
-						
+
 						actionResult = true;
 					}
 				}
-				
+
 				//-------------------------------------------------------------
 				// NOW IT'S SAFE TO DELETE THIS CHUNK FROM THE LOCAL FILESYSTEM
 				//-------------------------------------------------------------
-				
+
 				if (actionResult)
 				{
 					if (fmInstance.deleteChunk(fileId, chunkId))

@@ -7,7 +7,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import bs.filesystem.Chunk;
-import bs.logging.Logger;
 import bs.protocol.GenericMessage;
 
 public class RestoreService extends BaseService
@@ -73,7 +72,7 @@ public class RestoreService extends BaseService
 			registerMessage(fileId, paramMessage.getChunkId());
 		}
 	}
-	
+
 	/**
 	 * stores received CHUNK messages from other peers, key = (fileId, chunkId)
 	 */

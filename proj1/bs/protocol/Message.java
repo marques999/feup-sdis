@@ -38,7 +38,7 @@ public abstract class Message
 	 * Its value is encoded as a variable length sequence of ASCII digits
 	 */
 	private final int m_length;
-	
+
 	/*
 	 * This attribute represents the ID of the peer that has sent the message.
 	 * Its value is encoded as a variable length sequence of ASCII digits.

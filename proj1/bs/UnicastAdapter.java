@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import bs.logging.Logger;
 
 public class UnicastAdapter extends Thread
 {
@@ -27,7 +26,7 @@ public class UnicastAdapter extends Thread
 		{
 			m_available = false;
 		}
-		
+
 		if (m_available)
 		{
 			Logger.logInformation(String.format(PeerStrings.messageUnicastListening, getPort()));

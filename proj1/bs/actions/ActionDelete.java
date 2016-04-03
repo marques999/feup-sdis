@@ -2,10 +2,10 @@ package bs.actions;
 
 import java.util.Set;
 
+import bs.Logger;
 import bs.Peer;
 import bs.PeerGlobals;
 import bs.filesystem.FileInformation;
-import bs.logging.Logger;
 
 public class ActionDelete extends Action
 {
@@ -24,7 +24,7 @@ public class ActionDelete extends Action
 	{
 		fileName = paramFile;
 	}
-	
+
 	private long waitingTime = PeerGlobals.initialWaitingTime;
 
 	private boolean simpleDelete(final String fileId)
@@ -33,7 +33,7 @@ public class ActionDelete extends Action
 		{
 			Peer.sendDELETE(fileId);
 			Logger.logDebug(String.format(messageSendingDelete, i, PeerGlobals.maximumAttempts));
-			
+
 			try
 			{
 				Thread.sleep(generateBackoff());
@@ -43,17 +43,17 @@ public class ActionDelete extends Action
 				return false;
 			}
 		}
-		
+
 		return true;
 	}
 
 	private boolean enhancedDelete(final String fileId)
-	{	
+	{
 		Set<Integer> myPeers = bsdbInstance.getRemotePeers(fileId);
-	
+
 		for (int i = 1; i <= PeerGlobals.maximumAttempts; i++)
 		{
-			Peer.sendDELETE(fileId);	
+			Peer.sendDELETE(fileId);
 			Logger.logInformation(String.format(messageWaitingDeleted, myPeers.size(), i, PeerGlobals.maximumAttempts));
 
 			try
@@ -66,12 +66,12 @@ public class ActionDelete extends Action
 			}
 
 			myPeers = bsdbInstance.getRemotePeers(fileId);
-			
+
 			if (myPeers.isEmpty())
 			{
 				return true;
 			}
-			
+
 			waitingTime *= 2;
 		}
 
@@ -107,7 +107,7 @@ public class ActionDelete extends Action
 			if (actionResult)
 			{
 				if (fmInstance.deleteFile(fileName))
-				{			
+				{
 					if (bsdbInstance.removeChunks(fileName))
 					{
 						Logger.logWarning(messagePeerHasChunks);
@@ -117,7 +117,7 @@ public class ActionDelete extends Action
 					bsdbInstance.unregisterRestore(fileName);
 				}
 				else
-				{					
+				{
 					Logger.logError(String.format(messageDeleteFailed, fileName));
 					actionResult = false;
 				}

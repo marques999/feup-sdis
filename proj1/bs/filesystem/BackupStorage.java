@@ -7,8 +7,9 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+
+import bs.Logger;
 import bs.Peer;
-import bs.logging.Logger;
 
 public class BackupStorage implements Serializable
 {
@@ -27,19 +28,19 @@ public class BackupStorage implements Serializable
 	private HashMap<String, RemoteCollection> remotePeers;
 
 	public final void registerRemotePeers(final Chunk paramChunk, final Set<Integer> paramPeers)
-	{	
+	{
 		final String fileId = paramChunk.getFileId();
 
 		synchronized (remotePeers)
 		{
 			if (!remotePeers.containsKey(fileId))
-			{	
+			{
 				remotePeers.put(fileId, new RemoteCollection(paramChunk.getReplicationDegree()));
 			}
 
 			remotePeers.get(fileId).registerPeers(paramChunk.getChunkId(), paramPeers);
 		}
-		
+
 		Peer.writeStorage();
 	}
 
@@ -71,7 +72,7 @@ public class BackupStorage implements Serializable
 			}
 		}
 	}
-	
+
 	public final void removeRemotePeer(final String fileId, int peerId)
 	{
 		synchronized (remotePeers)
@@ -140,14 +141,14 @@ public class BackupStorage implements Serializable
 			if (remoteFiles.containsKey(fileName))
 			{
 				Logger.logInformation("unregistering " + fileName + " from restore...");
-				
+
 				final FileInformation restoreInformation = remoteFiles.remove(fileName);
-				
+
 				if (restoreInformation != null)
 				{
 					remotePeers.remove(restoreInformation.getFileId());
 				}
-				
+
 				Peer.writeStorage();
 			}
 		}
@@ -217,7 +218,7 @@ public class BackupStorage implements Serializable
 		return diskCapacity - currentSize;
 	}
 
-	// -----------------------------------------------------
+	//-----------------------------------------------------
 
 	private HashMap<String, ChunkCollection> localChunks;
 
@@ -275,14 +276,14 @@ public class BackupStorage implements Serializable
 	public synchronized boolean canBackup(final String fileName)
 	{
 		final FileInformation restoreInformation = getRestoreInformation(fileName);
-		
+
 		if (restoreInformation == null)
 		{
 			return true;
 		}
-		
+
 		final String fileId = restoreInformation.getFileId();
-		
+
 		if (remotePeers.containsKey(fileId))
 		{
 			if (remotePeers.get(fileId).getCount() < restoreInformation.getCount())
@@ -303,7 +304,7 @@ public class BackupStorage implements Serializable
 			if (localChunks.get(fileId).registerPeer(chunkId, peerId))
 			{
 				Peer.writeStorage();
-			}	
+			}
 		}
 	}
 
@@ -314,7 +315,7 @@ public class BackupStorage implements Serializable
 			if (localChunks.get(fileId).removePeer(chunkId, peerId))
 			{
 				Peer.writeStorage();
-			}	
+			}
 		}
 	}
 
@@ -337,7 +338,7 @@ public class BackupStorage implements Serializable
 
 		return 0;
 	}
-	
+
 	public synchronized Set<Integer> getPeers(final String fileId, int chunkId)
 	{
 		if (localChunks.containsKey(fileId))
@@ -414,7 +415,7 @@ public class BackupStorage implements Serializable
 		return false;
 	}
 
-	// -----------------------------------------------------
+	//-----------------------------------------------------
 
 	public synchronized boolean removeChunks(final String fileId)
 	{

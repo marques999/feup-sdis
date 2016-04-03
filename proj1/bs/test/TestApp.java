@@ -8,7 +8,7 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
-import bs.logging.Logger;
+import bs.Logger;
 
 public class TestApp
 {

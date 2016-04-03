@@ -26,10 +26,10 @@ public abstract class BaseService extends Thread
 		fmInstance = Peer.getFiles();
 		bsdbInstance = Peer.getStorage();
 	}
-	
+
 	protected final FileManager fmInstance;
 	protected final BackupStorage bsdbInstance;
-	
+
 	public final boolean available()
 	{
 		return m_connection.available();

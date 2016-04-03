@@ -44,7 +44,7 @@ public class ChunkBackup
 	{
 		final MessageDigest md = MessageDigest.getInstance("SHA-256");
 		final StringBuffer sb = new StringBuffer();
-		final String digestedFile = String.format("%s/%d/%d", fileDescriptor.getName(), fileDescriptor.lastModified(), fileDescriptor.length());
+		final String digestedFile = String.format("%s/%d", fileDescriptor.getName(), fileDescriptor.length());
 
 		md.update(digestedFile.getBytes());
 

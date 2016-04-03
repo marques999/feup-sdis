@@ -1,4 +1,4 @@
-package bs.logging;
+package bs;
 
 public class Logger
 {

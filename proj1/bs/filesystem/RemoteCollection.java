@@ -14,23 +14,22 @@ public class RemoteCollection implements Serializable
 		replicationDegree = paramDegree;
 		remotePeers = new HashMap<Integer, Set<Integer>>();
 	}
-	
+
 	private final HashMap<Integer, Set<Integer>> remotePeers;
-	
+
 	public final Set<Integer> getPeers()
 	{
 		final Set<Integer> myPeers = new HashSet<Integer>();
 
-		remotePeers.forEach((chunkId, peerSet) ->
-		{
+		remotePeers.forEach((chunkId, peerSet) -> {
 			myPeers.addAll(peerSet);
 		});
-		
+
 		return myPeers;
 	}
-	
+
 	private final int replicationDegree;
-	
+
 	public final int getCount()
 	{
 		return remotePeers.size();
@@ -45,7 +44,7 @@ public class RemoteCollection implements Serializable
 				return true;
 			}
 		}
-		
+
 		return false;
 	}
 
@@ -58,7 +57,7 @@ public class RemoteCollection implements Serializable
 
 		remotePeers.get(chunkId).addAll(peerSet);
 	}
-	
+
 	public final void removePeer(int chunkId, int peerId)
 	{
 		if (remotePeers.containsKey(chunkId))
@@ -66,7 +65,7 @@ public class RemoteCollection implements Serializable
 			remotePeers.get(chunkId).remove(peerId);
 		}
 	}
-	
+
 	public final void removePeer(int peerId)
 	{
 		for (Set<Integer> thisChunk : remotePeers.values())

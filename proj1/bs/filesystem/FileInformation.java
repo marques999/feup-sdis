@@ -24,7 +24,7 @@ public class FileInformation implements Serializable
 	}
 
 	//-----------------------------------------------------
-	
+
 	private final String fileId;
 
 	public final String getFileId()

@@ -9,7 +9,7 @@ public class PeerEnhanced
 			if (Peer.initializePeer(args, false))
 			{
 				Peer.setEnhancements(true);
-			}	
+			}
 		}
 		else
 		{

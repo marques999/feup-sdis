@@ -7,8 +7,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
+import bs.Logger;
 import bs.Peer;
-import bs.logging.Logger;
 
 public class FileManager
 {

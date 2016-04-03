@@ -12,7 +12,6 @@ import java.net.UnknownHostException;
 import bs.filesystem.BackupStorage;
 import bs.filesystem.Chunk;
 import bs.filesystem.FileManager;
-import bs.logging.Logger;
 import bs.protocol.ChunkMessage;
 import bs.protocol.ChunkMessage2_0;
 import bs.protocol.DeleteMessage;
@@ -137,7 +136,7 @@ public class Peer
 	{
 		return MDR_enhanced.send(paramMessage.getMessage(), paramAddress, paramPort);
 	}
-	
+
 	public static int getUnicastPort()
 	{
 		return MDR_enhanced == null ? -1 : MDR_enhanced.getPort();
@@ -192,7 +191,7 @@ public class Peer
 		Logger.logDebug("sending unicast chunk " + paramChunk.getChunkId() + " to " + paramAddress + ":" + paramPort);
 		return issueUnicastCommand(new ChunkMessage(paramChunk), paramAddress, paramPort);
 	}
-	
+
 	public static boolean sendMulticastCHUNK2_0(final Chunk paramChunk)
 	{
 		Logger.logDebug("sending dummy chunk " + paramChunk.getChunkId() + "...");
@@ -203,7 +202,7 @@ public class Peer
 	{
 		return issueControlCommand(new DeleteMessage(fileId));
 	}
-	
+
 	public static boolean sendDELETED2_0(final String fileId)
 	{
 		return issueControlCommand(new DeletedMessage2_0(fileId));
@@ -222,13 +221,13 @@ public class Peer
 			return issueControlCommand(new GetchunkMessage(fileId, chunkId));
 		}
 	}
-	
+
 	public static boolean sendPUTCHUNK(final Chunk paramChunk)
 	{
 		Logger.logChunkCommand("\"putchunk\"", paramChunk.getFileId(), paramChunk.getChunkId());
 		return issueBackupCommand(new PutchunkMessage(paramChunk));
 	}
-	
+
 	public static boolean sendREMOVED(final String fileId, int chunkId)
 	{
 		Logger.logChunkCommand("\"removed\"", fileId, chunkId);
@@ -323,7 +322,7 @@ public class Peer
 		System.out.println("    (3) Peer <PeerId> <McHost> <McPort> <MdbHost> <MdbPort> <MdrHost> <MdrPort>");
 		System.exit(1);
 	}
-	
+
 	private static InetAddress multicastControlHost = null;
 	private static InetAddress multicastBackupHost = null;
 	private static InetAddress multicastRestoreHost = null;

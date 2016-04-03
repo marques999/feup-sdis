@@ -10,7 +10,6 @@ import bs.actions.ActionBackup;
 import bs.actions.ActionDelete;
 import bs.actions.ActionReclaim;
 import bs.actions.ActionRestore;
-import bs.logging.Logger;
 import bs.test.TestStub;
 
 public class InitiatorPeer implements TestStub
