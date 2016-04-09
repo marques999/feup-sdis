@@ -201,7 +201,7 @@ public class BackupStorage implements Serializable
 	//-----------------------------------------------------
 
 	private long currentSize = 0;
-	private long diskCapacity = (long) (2 * 1024 * 1024);
+	private long diskCapacity = (long) (32 * 1024 * 1024);
 
 	public void setCapacity(long paramBytes)
 	{

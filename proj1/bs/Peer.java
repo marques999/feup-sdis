@@ -353,7 +353,7 @@ public class Peer
 				Logger.abort(PeerStrings.messageInvalidRemote);
 			}
 
-			if (myPeerId < 0 || myPeerId > Short.MAX_VALUE)
+			if (myPeerId < 0)
 			{
 				Logger.abort(PeerStrings.messageInvalidRemote);
 			}
@@ -369,7 +369,7 @@ public class Peer
 				Logger.abort(PeerStrings.messageInvalidPeer);
 			}
 
-			if (myPeerId < 0 || myPeerId > Short.MAX_VALUE)
+			if (myPeerId < 0)
 			{
 				Logger.abort(PeerStrings.messageInvalidPeer);
 			}
